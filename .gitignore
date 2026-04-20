@@ -1,0 +1,19 @@
+# Root-level ignores; each sub-project also has its own .gitignore.
+
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.log
+
+# OS
+Thumbs.db
+ehthumbs.db
+
+# Env
+.env
+.env.local
+
+# Build outputs (also ignored per-sub-project)
+dist/
+build/
