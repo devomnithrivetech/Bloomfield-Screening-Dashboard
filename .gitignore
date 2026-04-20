@@ -13,6 +13,7 @@ ehthumbs.db
 # Env
 .env
 .env.local
+.env.example
 
 # Build outputs (also ignored per-sub-project)
 dist/
