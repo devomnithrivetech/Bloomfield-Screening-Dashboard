@@ -44,11 +44,11 @@ const Dashboard = () => {
         {stats.map((stat, i) => (
           <div key={stat.label} className="flex items-center">
             {i > 0 && <div className="w-px h-10 bg-border mx-6" />}
-            <div className="flex flex-col">
+            <div className="flex flex-col animate-fade-in">
               <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
                 {stat.label}
               </span>
-              <span className={`text-[22px] font-semibold leading-tight ${stat.valueColor || "text-primary"}`}>
+              <span className={`text-[22px] font-semibold leading-tight tabular-nums ${stat.valueColor || "text-primary"}`}>
                 {stat.value}
               </span>
               <span className="text-[11px] text-muted-foreground">{stat.subtext}</span>

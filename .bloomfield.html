@@ -1,0 +1,500 @@
+<!doctype html>
+  <head><meta charset="utf-8"><script>if(navigator.userAgent.match(/MSIE|Internet Explorer/i)||navigator.userAgent.match(/Trident\/7\..*?rv:11/i)){var href=document.location.href;if(!href.match(/[?&]nowprocket/)){if(href.indexOf("?")==-1){if(href.indexOf("#")==-1){document.location.href=href+"?nowprocket=1"}else{document.location.href=href.replace("#","?nowprocket=1#")}}else{if(href.indexOf("#")==-1){document.location.href=href+"&nowprocket=1"}else{document.location.href=href.replace("#","&nowprocket=1#")}}}}</script><script>(()=>{class RocketLazyLoadScripts{constructor(){this.v="2.0.5",this.userEvents=["keydown","keyup","mousedown","mouseup","mousemove","mouseover","mouseout","touchmove","touchstart","touchend","touchcancel","wheel","click","dblclick","input"],this.attributeEvents=["onblur","onclick","oncontextmenu","ondblclick","onfocus","onmousedown","onmouseenter","onmouseleave","onmousemove","onmouseout","onmouseover","onmouseup","onmousewheel","onscroll","onsubmit"]}async t(){this.i(),this.o(),/iP(ad|hone)/.test(navigator.userAgent)&&this.h(),this.u(),this.l(this),this.m(),this.k(this),this.p(this),this._(),await Promise.all([this.R(),this.L()]),this.lastBreath=Date.now(),this.S(this),this.P(),this.D(),this.O(),this.M(),await this.C(this.delayedScripts.normal),await this.C(this.delayedScripts.defer),await this.C(this.delayedScripts.async),await this.T(),await this.F(),await this.j(),await this.A(),window.dispatchEvent(new Event("rocket-allScriptsLoaded")),this.everythingLoaded=!0,this.lastTouchEnd&&await new Promise(t=>setTimeout(t,500-Date.now()+this.lastTouchEnd)),this.I(),this.H(),this.U(),this.W()}i(){this.CSPIssue=sessionStorage.getItem("rocketCSPIssue"),document.addEventListener("securitypolicyviolation",t=>{this.CSPIssue||"script-src-elem"!==t.violatedDirective||"data"!==t.blockedURI||(this.CSPIssue=!0,sessionStorage.setItem("rocketCSPIssue",!0))},{isRocket:!0})}o(){window.addEventListener("pageshow",t=>{this.persisted=t.persisted,this.realWindowLoadedFired=!0},{isRocket:!0}),window.addEventListener("pagehide",()=>{this.onFirstUserAction=null},{isRocket:!0})}h(){let t;function e(e){t=e}window.addEventListener("touchstart",e,{isRocket:!0}),window.addEventListener("touchend",function i(o){o.changedTouches[0]&&t.changedTouches[0]&&Math.abs(o.changedTouches[0].pageX-t.changedTouches[0].pageX)<10&&Math.abs(o.changedTouches[0].pageY-t.changedTouches[0].pageY)<10&&o.timeStamp-t.timeStamp<200&&(window.removeEventListener("touchstart",e,{isRocket:!0}),window.removeEventListener("touchend",i,{isRocket:!0}),"INPUT"===o.target.tagName&&"text"===o.target.type||(o.target.dispatchEvent(new TouchEvent("touchend",{target:o.target,bubbles:!0})),o.target.dispatchEvent(new MouseEvent("mouseover",{target:o.target,bubbles:!0})),o.target.dispatchEvent(new PointerEvent("click",{target:o.target,bubbles:!0,cancelable:!0,detail:1,clientX:o.changedTouches[0].clientX,clientY:o.changedTouches[0].clientY})),event.preventDefault()))},{isRocket:!0})}q(t){this.userActionTriggered||("mousemove"!==t.type||this.firstMousemoveIgnored?"keyup"===t.type||"mouseover"===t.type||"mouseout"===t.type||(this.userActionTriggered=!0,this.onFirstUserAction&&this.onFirstUserAction()):this.firstMousemoveIgnored=!0),"click"===t.type&&t.preventDefault(),t.stopPropagation(),t.stopImmediatePropagation(),"touchstart"===this.lastEvent&&"touchend"===t.type&&(this.lastTouchEnd=Date.now()),"click"===t.type&&(this.lastTouchEnd=0),this.lastEvent=t.type,t.composedPath&&t.composedPath()[0].getRootNode()instanceof ShadowRoot&&(t.rocketTarget=t.composedPath()[0]),this.savedUserEvents.push(t)}u(){this.savedUserEvents=[],this.userEventHandler=this.q.bind(this),this.userEvents.forEach(t=>window.addEventListener(t,this.userEventHandler,{passive:!1,isRocket:!0})),document.addEventListener("visibilitychange",this.userEventHandler,{isRocket:!0})}U(){this.userEvents.forEach(t=>window.removeEventListener(t,this.userEventHandler,{passive:!1,isRocket:!0})),document.removeEventListener("visibilitychange",this.userEventHandler,{isRocket:!0}),this.savedUserEvents.forEach(t=>{(t.rocketTarget||t.target).dispatchEvent(new window[t.constructor.name](t.type,t))})}m(){const t="return false",e=Array.from(this.attributeEvents,t=>"data-rocket-"+t),i="["+this.attributeEvents.join("],[")+"]",o="[data-rocket-"+this.attributeEvents.join("],[data-rocket-")+"]",s=(e,i,o)=>{o&&o!==t&&(e.setAttribute("data-rocket-"+i,o),e["rocket"+i]=new Function("event",o),e.setAttribute(i,t))};new MutationObserver(t=>{for(const n of t)"attributes"===n.type&&(n.attributeName.startsWith("data-rocket-")||this.everythingLoaded?n.attributeName.startsWith("data-rocket-")&&this.everythingLoaded&&this.N(n.target,n.attributeName.substring(12)):s(n.target,n.attributeName,n.target.getAttribute(n.attributeName))),"childList"===n.type&&n.addedNodes.forEach(t=>{if(t.nodeType===Node.ELEMENT_NODE)if(this.everythingLoaded)for(const i of[t,...t.querySelectorAll(o)])for(const t of i.getAttributeNames())e.includes(t)&&this.N(i,t.substring(12));else for(const e of[t,...t.querySelectorAll(i)])for(const t of e.getAttributeNames())this.attributeEvents.includes(t)&&s(e,t,e.getAttribute(t))})}).observe(document,{subtree:!0,childList:!0,attributeFilter:[...this.attributeEvents,...e]})}I(){this.attributeEvents.forEach(t=>{document.querySelectorAll("[data-rocket-"+t+"]").forEach(e=>{this.N(e,t)})})}N(t,e){const i=t.getAttribute("data-rocket-"+e);i&&(t.setAttribute(e,i),t.removeAttribute("data-rocket-"+e))}k(t){Object.defineProperty(HTMLElement.prototype,"onclick",{get(){return this.rocketonclick||null},set(e){this.rocketonclick=e,this.setAttribute(t.everythingLoaded?"onclick":"data-rocket-onclick","this.rocketonclick(event)")}})}S(t){function e(e,i){let o=e[i];e[i]=null,Object.defineProperty(e,i,{get:()=>o,set(s){t.everythingLoaded?o=s:e["rocket"+i]=o=s}})}e(document,"onreadystatechange"),e(window,"onload"),e(window,"onpageshow");try{Object.defineProperty(document,"readyState",{get:()=>t.rocketReadyState,set(e){t.rocketReadyState=e},configurable:!0}),document.readyState="loading"}catch(t){console.log("WPRocket DJE readyState conflict, bypassing")}}l(t){this.originalAddEventListener=EventTarget.prototype.addEventListener,this.originalRemoveEventListener=EventTarget.prototype.removeEventListener,this.savedEventListeners=[],EventTarget.prototype.addEventListener=function(e,i,o){o&&o.isRocket||!t.B(e,this)&&!t.userEvents.includes(e)||t.B(e,this)&&!t.userActionTriggered||e.startsWith("rocket-")||t.everythingLoaded?t.originalAddEventListener.call(this,e,i,o):(t.savedEventListeners.push({target:this,remove:!1,type:e,func:i,options:o}),"mouseenter"!==e&&"mouseleave"!==e||t.originalAddEventListener.call(this,e,t.savedUserEvents.push,o))},EventTarget.prototype.removeEventListener=function(e,i,o){o&&o.isRocket||!t.B(e,this)&&!t.userEvents.includes(e)||t.B(e,this)&&!t.userActionTriggered||e.startsWith("rocket-")||t.everythingLoaded?t.originalRemoveEventListener.call(this,e,i,o):t.savedEventListeners.push({target:this,remove:!0,type:e,func:i,options:o})}}J(t,e){this.savedEventListeners=this.savedEventListeners.filter(i=>{let o=i.type,s=i.target||window;return e!==o||t!==s||(this.B(o,s)&&(i.type="rocket-"+o),this.$(i),!1)})}H(){EventTarget.prototype.addEventListener=this.originalAddEventListener,EventTarget.prototype.removeEventListener=this.originalRemoveEventListener,this.savedEventListeners.forEach(t=>this.$(t))}$(t){t.remove?this.originalRemoveEventListener.call(t.target,t.type,t.func,t.options):this.originalAddEventListener.call(t.target,t.type,t.func,t.options)}p(t){let e;function i(e){return t.everythingLoaded?e:e.split(" ").map(t=>"load"===t||t.startsWith("load.")?"rocket-jquery-load":t).join(" ")}function o(o){function s(e){const s=o.fn[e];o.fn[e]=o.fn.init.prototype[e]=function(){return this[0]===window&&t.userActionTriggered&&("string"==typeof arguments[0]||arguments[0]instanceof String?arguments[0]=i(arguments[0]):"object"==typeof arguments[0]&&Object.keys(arguments[0]).forEach(t=>{const e=arguments[0][t];delete arguments[0][t],arguments[0][i(t)]=e})),s.apply(this,arguments),this}}if(o&&o.fn&&!t.allJQueries.includes(o)){const e={DOMContentLoaded:[],"rocket-DOMContentLoaded":[]};for(const t in e)document.addEventListener(t,()=>{e[t].forEach(t=>t())},{isRocket:!0});o.fn.ready=o.fn.init.prototype.ready=function(i){function s(){parseInt(o.fn.jquery)>2?setTimeout(()=>i.bind(document)(o)):i.bind(document)(o)}return"function"==typeof i&&(t.realDomReadyFired?!t.userActionTriggered||t.fauxDomReadyFired?s():e["rocket-DOMContentLoaded"].push(s):e.DOMContentLoaded.push(s)),this},s("on"),s("one"),s("off"),t.allJQueries.push(o)}e=o}t.allJQueries=[],o(window.jQuery),Object.defineProperty(window,"jQuery",{get:()=>e,set(t){o(t)}})}P(){const t=new Map;document.write=document.writeln=function(e){const i=document.currentScript,o=document.createRange(),s=i.parentElement;let n=t.get(i);void 0===n&&(n=i.nextSibling,t.set(i,n));const c=document.createDocumentFragment();o.setStart(c,0),c.appendChild(o.createContextualFragment(e)),s.insertBefore(c,n)}}async R(){return new Promise(t=>{this.userActionTriggered?t():this.onFirstUserAction=t})}async L(){return new Promise(t=>{document.addEventListener("DOMContentLoaded",()=>{this.realDomReadyFired=!0,t()},{isRocket:!0})})}async j(){return this.realWindowLoadedFired?Promise.resolve():new Promise(t=>{window.addEventListener("load",t,{isRocket:!0})})}M(){this.pendingScripts=[];this.scriptsMutationObserver=new MutationObserver(t=>{for(const e of t)e.addedNodes.forEach(t=>{"SCRIPT"!==t.tagName||!t.src||t.noModule||t.isWPRocket||this.pendingScripts.push({script:t,promise:new Promise(e=>{const i=()=>{const i=this.pendingScripts.findIndex(e=>e.script===t);i>=0&&this.pendingScripts.splice(i,1),e()};t.addEventListener("load",i,{isRocket:!0}),t.addEventListener("error",i,{isRocket:!0}),setTimeout(i,1e3)})})})}),this.scriptsMutationObserver.observe(document,{childList:!0,subtree:!0})}async F(){await this.X(),this.pendingScripts.length?(await this.pendingScripts[0].promise,await this.F()):this.scriptsMutationObserver.disconnect()}D(){this.delayedScripts={normal:[],async:[],defer:[]},document.querySelectorAll("script[type$=rocketlazyloadscript]").forEach(t=>{t.hasAttribute("data-rocket-src")?t.hasAttribute("async")&&!1!==t.async?this.delayedScripts.async.push(t):t.hasAttribute("defer")&&!1!==t.defer||"module"===t.getAttribute("data-rocket-type")?this.delayedScripts.defer.push(t):this.delayedScripts.normal.push(t):this.delayedScripts.normal.push(t)})}async _(){await this.L();let t=[];document.querySelectorAll("script[type$=rocketlazyloadscript][data-rocket-src]").forEach(e=>{let i=e.getAttribute("data-rocket-src");if(i&&!i.startsWith("data:")){i.startsWith("//")&&(i=location.protocol+i);try{const o=new URL(i).origin;o!==location.origin&&t.push({src:o,crossOrigin:e.crossOrigin||"module"===e.getAttribute("data-rocket-type")})}catch(t){}}}),t=[...new Map(t.map(t=>[JSON.stringify(t),t])).values()],this.Y(t,"preconnect")}async G(t){if(await this.K(),!0!==t.noModule||!("noModule"in HTMLScriptElement.prototype))return new Promise(e=>{let i;function o(){(i||t).setAttribute("data-rocket-status","executed"),e()}try{if(navigator.userAgent.includes("Firefox/")||""===navigator.vendor||this.CSPIssue)i=document.createElement("script"),[...t.attributes].forEach(t=>{let e=t.nodeName;"type"!==e&&("data-rocket-type"===e&&(e="type"),"data-rocket-src"===e&&(e="src"),i.setAttribute(e,t.nodeValue))}),t.text&&(i.text=t.text),t.nonce&&(i.nonce=t.nonce),i.hasAttribute("src")?(i.addEventListener("load",o,{isRocket:!0}),i.addEventListener("error",()=>{i.setAttribute("data-rocket-status","failed-network"),e()},{isRocket:!0}),setTimeout(()=>{i.isConnected||e()},1)):(i.text=t.text,o()),i.isWPRocket=!0,t.parentNode.replaceChild(i,t);else{const i=t.getAttribute("data-rocket-type"),s=t.getAttribute("data-rocket-src");i?(t.type=i,t.removeAttribute("data-rocket-type")):t.removeAttribute("type"),t.addEventListener("load",o,{isRocket:!0}),t.addEventListener("error",i=>{this.CSPIssue&&i.target.src.startsWith("data:")?(console.log("WPRocket: CSP fallback activated"),t.removeAttribute("src"),this.G(t).then(e)):(t.setAttribute("data-rocket-status","failed-network"),e())},{isRocket:!0}),s?(t.fetchPriority="high",t.removeAttribute("data-rocket-src"),t.src=s):t.src="data:text/javascript;base64,"+window.btoa(unescape(encodeURIComponent(t.text)))}}catch(i){t.setAttribute("data-rocket-status","failed-transform"),e()}});t.setAttribute("data-rocket-status","skipped")}async C(t){const e=t.shift();return e?(e.isConnected&&await this.G(e),this.C(t)):Promise.resolve()}O(){this.Y([...this.delayedScripts.normal,...this.delayedScripts.defer,...this.delayedScripts.async],"preload")}Y(t,e){this.trash=this.trash||[];let i=!0;var o=document.createDocumentFragment();t.forEach(t=>{const s=t.getAttribute&&t.getAttribute("data-rocket-src")||t.src;if(s&&!s.startsWith("data:")){const n=document.createElement("link");n.href=s,n.rel=e,"preconnect"!==e&&(n.as="script",n.fetchPriority=i?"high":"low"),t.getAttribute&&"module"===t.getAttribute("data-rocket-type")&&(n.crossOrigin=!0),t.crossOrigin&&(n.crossOrigin=t.crossOrigin),t.integrity&&(n.integrity=t.integrity),t.nonce&&(n.nonce=t.nonce),o.appendChild(n),this.trash.push(n),i=!1}}),document.head.appendChild(o)}W(){this.trash.forEach(t=>t.remove())}async T(){try{document.readyState="interactive"}catch(t){}this.fauxDomReadyFired=!0;try{await this.K(),this.J(document,"readystatechange"),document.dispatchEvent(new Event("rocket-readystatechange")),await this.K(),document.rocketonreadystatechange&&document.rocketonreadystatechange(),await this.K(),this.J(document,"DOMContentLoaded"),document.dispatchEvent(new Event("rocket-DOMContentLoaded")),await this.K(),this.J(window,"DOMContentLoaded"),window.dispatchEvent(new Event("rocket-DOMContentLoaded"))}catch(t){console.error(t)}}async A(){try{document.readyState="complete"}catch(t){}try{await this.K(),this.J(document,"readystatechange"),document.dispatchEvent(new Event("rocket-readystatechange")),await this.K(),document.rocketonreadystatechange&&document.rocketonreadystatechange(),await this.K(),this.J(window,"load"),window.dispatchEvent(new Event("rocket-load")),await this.K(),window.rocketonload&&window.rocketonload(),await this.K(),this.allJQueries.forEach(t=>t(window).trigger("rocket-jquery-load")),await this.K(),this.J(window,"pageshow");const t=new Event("rocket-pageshow");t.persisted=this.persisted,window.dispatchEvent(t),await this.K(),window.rocketonpageshow&&window.rocketonpageshow({persisted:this.persisted})}catch(t){console.error(t)}}async K(){Date.now()-this.lastBreath>45&&(await this.X(),this.lastBreath=Date.now())}async X(){return document.hidden?new Promise(t=>setTimeout(t)):new Promise(t=>requestAnimationFrame(t))}B(t,e=window){return e===document&&"readystatechange"===t||(e===document&&"DOMContentLoaded"===t||(e===window&&"DOMContentLoaded"===t||(e===window&&"load"===t||e===window&&"pageshow"===t)))}static run(){(new RocketLazyLoadScripts).t()}}RocketLazyLoadScripts.run()})();
+</script>
+    
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script type="text/rocketlazyloadscript" data-rocket-src="https://kit.fontawesome.com/ef21da2188.js" crossorigin="anonymous" data-rocket-defer defer></script>
+
+		<!-- Google Tag Manager -->
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','GTM-KF38BR');</script>
+    <!-- End Google Tag Manager -->
+    
+        <!-- Google tag (gtag.js) -->
+	  <script async src="https://www.googletagmanager.com/gtag/js?id=G-8S02HJ7G74"></script>
+	  <script>
+		  window.dataLayer = window.dataLayer || [];
+		  function gtag(){dataLayer.push(arguments);}
+		  gtag('js', new Date());
+
+		  gtag('config', 'G-8S02HJ7G74');
+	  </script>
+    <meta name='robots' content='index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1' />
+
+	<!-- This site is optimized with the Yoast SEO plugin v27.3 - https://yoast.com/product/yoast-seo-wordpress/ -->
+	<title>Bloomfield Capital | Commercial Real Estate Debt &amp; Equity</title>
+<link data-rocket-prefetch href="https://www.googletagmanager.com" rel="dns-prefetch">
+<link data-rocket-prefetch href="https://www.google-analytics.com" rel="dns-prefetch">
+<link data-rocket-prefetch href="https://www.gstatic.com" rel="dns-prefetch">
+<link data-rocket-prefetch href="https://js.ipredictive.com" rel="dns-prefetch">
+<link data-rocket-prefetch href="https://cdn.callrail.com" rel="dns-prefetch">
+<link crossorigin data-rocket-preload as="font" href="https://bloomfieldcapital.com/wp-content/themes/bloomfield-3/app/js/ecac3f23344d0d7d5c95.woff2" rel="preload">
+<link crossorigin data-rocket-preload as="font" href="https://bloomfieldcapital.com/wp-content/themes/bloomfield-3/app/js/ca12e19ed41738dbe989.woff2" rel="preload">
+<link crossorigin data-rocket-preload as="font" href="https://bloomfieldcapital.com/wp-content/themes/bloomfield-3/app/js/c0be4137a00c12db698b.woff2" rel="preload"><link rel="preload" data-rocket-preload as="image" href="" imagesrcset="https://bloomfieldcapital.com/wp-content/uploads/2016/06/Bloomfield_Detroit_Skyline.jpg 1600w, https://bloomfieldcapital.com/wp-content/uploads/2016/06/Bloomfield_Detroit_Skyline-300x143.jpg 300w, https://bloomfieldcapital.com/wp-content/uploads/2016/06/Bloomfield_Detroit_Skyline-768x366.jpg 768w, https://bloomfieldcapital.com/wp-content/uploads/2016/06/Bloomfield_Detroit_Skyline-1024x488.jpg 1024w" imagesizes="(max-width: 1600px) 100vw, 1600px" fetchpriority="high">
+	<meta name="description" content="We are a direct investor in commercial real estate debt and equity, delivering capital solutions for commercial projects nationwide." />
+	<link rel="canonical" href="https://bloomfieldcapital.com/" />
+	<meta property="og:locale" content="en_US" />
+	<meta property="og:type" content="website" />
+	<meta property="og:title" content="Bloomfield Capital | Commercial Real Estate Debt &amp; Equity" />
+	<meta property="og:description" content="We are a direct investor in commercial real estate debt and equity, delivering capital solutions for commercial projects nationwide." />
+	<meta property="og:url" content="https://bloomfieldcapital.com/" />
+	<meta property="og:site_name" content="Bloomfield Capital" />
+	<meta property="article:modified_time" content="2025-04-30T17:37:25+00:00" />
+	<meta property="og:image" content="https://bloomfieldcapital.com/wp-content/uploads/2017/03/Bloomfield_logo-vertical_3-3jl-e1574890799869.jpg" />
+	<meta property="og:image:width" content="842" />
+	<meta property="og:image:height" content="565" />
+	<meta property="og:image:type" content="image/jpeg" />
+	<meta name="twitter:card" content="summary_large_image" />
+	<script type="application/ld+json" class="yoast-schema-graph">{"@context":"https:\/\/schema.org","@graph":[{"@type":"WebPage","@id":"https:\/\/bloomfieldcapital.com\/","url":"https:\/\/bloomfieldcapital.com\/","name":"Bloomfield Capital | Commercial Real Estate Debt & Equity","isPartOf":{"@id":"https:\/\/bloomfieldcapital.com\/#website"},"datePublished":"2016-06-21T23:06:30+00:00","dateModified":"2025-04-30T17:37:25+00:00","description":"We are a direct investor in commercial real estate debt and equity, delivering capital solutions for commercial projects nationwide.","breadcrumb":{"@id":"https:\/\/bloomfieldcapital.com\/#breadcrumb"},"inLanguage":"en-US","potentialAction":[{"@type":"ReadAction","target":["https:\/\/bloomfieldcapital.com\/"]}]},{"@type":"BreadcrumbList","@id":"https:\/\/bloomfieldcapital.com\/#breadcrumb","itemListElement":[{"@type":"ListItem","position":1,"name":"Home"}]},{"@type":"WebSite","@id":"https:\/\/bloomfieldcapital.com\/#website","url":"https:\/\/bloomfieldcapital.com\/","name":"Bloomfield Capital","description":"","potentialAction":[{"@type":"SearchAction","target":{"@type":"EntryPoint","urlTemplate":"https:\/\/bloomfieldcapital.com\/?s={search_term_string}"},"query-input":{"@type":"PropertyValueSpecification","valueRequired":true,"valueName":"search_term_string"}}],"inLanguage":"en-US"}]}</script>
+	<meta name="google-site-verification" content="R_vrWz3R6Dbdzrpc7VX832aQFq3duTfFAINJePWkDZ4" />
+	<!-- / Yoast SEO plugin. -->
+
+
+<link rel='dns-prefetch' href='//www.google.com' />
+
+<link rel="alternate" title="oEmbed (JSON)" type="application/json+oembed" href="https://bloomfieldcapital.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fbloomfieldcapital.com%2F" />
+<link rel="alternate" title="oEmbed (XML)" type="text/xml+oembed" href="https://bloomfieldcapital.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fbloomfieldcapital.com%2F&#038;format=xml" />
+<style id='wp-img-auto-sizes-contain-inline-css' type='text/css'>
+img:is([sizes=auto i],[sizes^="auto," i]){contain-intrinsic-size:3000px 1500px}
+/*# sourceURL=wp-img-auto-sizes-contain-inline-css */
+</style>
+<style id='wp-emoji-styles-inline-css' type='text/css'>
+
+	img.wp-smiley, img.emoji {
+		display: inline !important;
+		border: none !important;
+		box-shadow: none !important;
+		height: 1em !important;
+		width: 1em !important;
+		margin: 0 0.07em !important;
+		vertical-align: -0.1em !important;
+		background: none !important;
+		padding: 0 !important;
+	}
+/*# sourceURL=wp-emoji-styles-inline-css */
+</style>
+<style id='wp-block-library-inline-css' type='text/css'>
+:root{--wp-block-synced-color:#7a00df;--wp-block-synced-color--rgb:122,0,223;--wp-bound-block-color:var(--wp-block-synced-color);--wp-editor-canvas-background:#ddd;--wp-admin-theme-color:#007cba;--wp-admin-theme-color--rgb:0,124,186;--wp-admin-theme-color-darker-10:#006ba1;--wp-admin-theme-color-darker-10--rgb:0,107,160.5;--wp-admin-theme-color-darker-20:#005a87;--wp-admin-theme-color-darker-20--rgb:0,90,135;--wp-admin-border-width-focus:2px}@media (min-resolution:192dpi){:root{--wp-admin-border-width-focus:1.5px}}.wp-element-button{cursor:pointer}:root .has-very-light-gray-background-color{background-color:#eee}:root .has-very-dark-gray-background-color{background-color:#313131}:root .has-very-light-gray-color{color:#eee}:root .has-very-dark-gray-color{color:#313131}:root .has-vivid-green-cyan-to-vivid-cyan-blue-gradient-background{background:linear-gradient(135deg,#00d084,#0693e3)}:root .has-purple-crush-gradient-background{background:linear-gradient(135deg,#34e2e4,#4721fb 50%,#ab1dfe)}:root .has-hazy-dawn-gradient-background{background:linear-gradient(135deg,#faaca8,#dad0ec)}:root .has-subdued-olive-gradient-background{background:linear-gradient(135deg,#fafae1,#67a671)}:root .has-atomic-cream-gradient-background{background:linear-gradient(135deg,#fdd79a,#004a59)}:root .has-nightshade-gradient-background{background:linear-gradient(135deg,#330968,#31cdcf)}:root .has-midnight-gradient-background{background:linear-gradient(135deg,#020381,#2874fc)}:root{--wp--preset--font-size--normal:16px;--wp--preset--font-size--huge:42px}.has-regular-font-size{font-size:1em}.has-larger-font-size{font-size:2.625em}.has-normal-font-size{font-size:var(--wp--preset--font-size--normal)}.has-huge-font-size{font-size:var(--wp--preset--font-size--huge)}.has-text-align-center{text-align:center}.has-text-align-left{text-align:left}.has-text-align-right{text-align:right}.has-fit-text{white-space:nowrap!important}#end-resizable-editor-section{display:none}.aligncenter{clear:both}.items-justified-left{justify-content:flex-start}.items-justified-center{justify-content:center}.items-justified-right{justify-content:flex-end}.items-justified-space-between{justify-content:space-between}.screen-reader-text{border:0;clip-path:inset(50%);height:1px;margin:-1px;overflow:hidden;padding:0;position:absolute;width:1px;word-wrap:normal!important}.screen-reader-text:focus{background-color:#ddd;clip-path:none;color:#444;display:block;font-size:1em;height:auto;left:5px;line-height:normal;padding:15px 23px 14px;text-decoration:none;top:5px;width:auto;z-index:100000}html :where(.has-border-color){border-style:solid}html :where([style*=border-top-color]){border-top-style:solid}html :where([style*=border-right-color]){border-right-style:solid}html :where([style*=border-bottom-color]){border-bottom-style:solid}html :where([style*=border-left-color]){border-left-style:solid}html :where([style*=border-width]){border-style:solid}html :where([style*=border-top-width]){border-top-style:solid}html :where([style*=border-right-width]){border-right-style:solid}html :where([style*=border-bottom-width]){border-bottom-style:solid}html :where([style*=border-left-width]){border-left-style:solid}html :where(img[class*=wp-image-]){height:auto;max-width:100%}:where(figure){margin:0 0 1em}html :where(.is-position-sticky){--wp-admin--admin-bar--position-offset:var(--wp-admin--admin-bar--height,0px)}@media screen and (max-width:600px){html :where(.is-position-sticky){--wp-admin--admin-bar--position-offset:0px}}
+
+/*# sourceURL=wp-block-library-inline-css */
+</style>
+<style id='classic-theme-styles-inline-css' type='text/css'>
+/*! This file is auto-generated */
+.wp-block-button__link{color:#fff;background-color:#32373c;border-radius:9999px;box-shadow:none;text-decoration:none;padding:calc(.667em + 2px) calc(1.333em + 2px);font-size:1.125em}.wp-block-file__button{background:#32373c;color:#fff;text-decoration:none}
+/*# sourceURL=/wp-includes/css/classic-themes.min.css */
+</style>
+<style id='global-styles-inline-css' type='text/css'>
+:root{--wp--preset--aspect-ratio--square: 1;--wp--preset--aspect-ratio--4-3: 4/3;--wp--preset--aspect-ratio--3-4: 3/4;--wp--preset--aspect-ratio--3-2: 3/2;--wp--preset--aspect-ratio--2-3: 2/3;--wp--preset--aspect-ratio--16-9: 16/9;--wp--preset--aspect-ratio--9-16: 9/16;--wp--preset--color--black: #000000;--wp--preset--color--cyan-bluish-gray: #abb8c3;--wp--preset--color--white: #ffffff;--wp--preset--color--pale-pink: #f78da7;--wp--preset--color--vivid-red: #cf2e2e;--wp--preset--color--luminous-vivid-orange: #ff6900;--wp--preset--color--luminous-vivid-amber: #fcb900;--wp--preset--color--light-green-cyan: #7bdcb5;--wp--preset--color--vivid-green-cyan: #00d084;--wp--preset--color--pale-cyan-blue: #8ed1fc;--wp--preset--color--vivid-cyan-blue: #0693e3;--wp--preset--color--vivid-purple: #9b51e0;--wp--preset--gradient--vivid-cyan-blue-to-vivid-purple: linear-gradient(135deg,rgb(6,147,227) 0%,rgb(155,81,224) 100%);--wp--preset--gradient--light-green-cyan-to-vivid-green-cyan: linear-gradient(135deg,rgb(122,220,180) 0%,rgb(0,208,130) 100%);--wp--preset--gradient--luminous-vivid-amber-to-luminous-vivid-orange: linear-gradient(135deg,rgb(252,185,0) 0%,rgb(255,105,0) 100%);--wp--preset--gradient--luminous-vivid-orange-to-vivid-red: linear-gradient(135deg,rgb(255,105,0) 0%,rgb(207,46,46) 100%);--wp--preset--gradient--very-light-gray-to-cyan-bluish-gray: linear-gradient(135deg,rgb(238,238,238) 0%,rgb(169,184,195) 100%);--wp--preset--gradient--cool-to-warm-spectrum: linear-gradient(135deg,rgb(74,234,220) 0%,rgb(151,120,209) 20%,rgb(207,42,186) 40%,rgb(238,44,130) 60%,rgb(251,105,98) 80%,rgb(254,248,76) 100%);--wp--preset--gradient--blush-light-purple: linear-gradient(135deg,rgb(255,206,236) 0%,rgb(152,150,240) 100%);--wp--preset--gradient--blush-bordeaux: linear-gradient(135deg,rgb(254,205,165) 0%,rgb(254,45,45) 50%,rgb(107,0,62) 100%);--wp--preset--gradient--luminous-dusk: linear-gradient(135deg,rgb(255,203,112) 0%,rgb(199,81,192) 50%,rgb(65,88,208) 100%);--wp--preset--gradient--pale-ocean: linear-gradient(135deg,rgb(255,245,203) 0%,rgb(182,227,212) 50%,rgb(51,167,181) 100%);--wp--preset--gradient--electric-grass: linear-gradient(135deg,rgb(202,248,128) 0%,rgb(113,206,126) 100%);--wp--preset--gradient--midnight: linear-gradient(135deg,rgb(2,3,129) 0%,rgb(40,116,252) 100%);--wp--preset--font-size--small: 13px;--wp--preset--font-size--medium: 20px;--wp--preset--font-size--large: 36px;--wp--preset--font-size--x-large: 42px;--wp--preset--spacing--20: 0.44rem;--wp--preset--spacing--30: 0.67rem;--wp--preset--spacing--40: 1rem;--wp--preset--spacing--50: 1.5rem;--wp--preset--spacing--60: 2.25rem;--wp--preset--spacing--70: 3.38rem;--wp--preset--spacing--80: 5.06rem;--wp--preset--shadow--natural: 6px 6px 9px rgba(0, 0, 0, 0.2);--wp--preset--shadow--deep: 12px 12px 50px rgba(0, 0, 0, 0.4);--wp--preset--shadow--sharp: 6px 6px 0px rgba(0, 0, 0, 0.2);--wp--preset--shadow--outlined: 6px 6px 0px -3px rgb(255, 255, 255), 6px 6px rgb(0, 0, 0);--wp--preset--shadow--crisp: 6px 6px 0px rgb(0, 0, 0);}:where(.is-layout-flex){gap: 0.5em;}:where(.is-layout-grid){gap: 0.5em;}body .is-layout-flex{display: flex;}.is-layout-flex{flex-wrap: wrap;align-items: center;}.is-layout-flex > :is(*, div){margin: 0;}body .is-layout-grid{display: grid;}.is-layout-grid > :is(*, div){margin: 0;}:where(.wp-block-columns.is-layout-flex){gap: 2em;}:where(.wp-block-columns.is-layout-grid){gap: 2em;}:where(.wp-block-post-template.is-layout-flex){gap: 1.25em;}:where(.wp-block-post-template.is-layout-grid){gap: 1.25em;}.has-black-color{color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-color{color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-color{color: var(--wp--preset--color--white) !important;}.has-pale-pink-color{color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-color{color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-color{color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-color{color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-color{color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-color{color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-color{color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-color{color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-color{color: var(--wp--preset--color--vivid-purple) !important;}.has-black-background-color{background-color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-background-color{background-color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-background-color{background-color: var(--wp--preset--color--white) !important;}.has-pale-pink-background-color{background-color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-background-color{background-color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-background-color{background-color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-background-color{background-color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-background-color{background-color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-background-color{background-color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-background-color{background-color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-background-color{background-color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-background-color{background-color: var(--wp--preset--color--vivid-purple) !important;}.has-black-border-color{border-color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-border-color{border-color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-border-color{border-color: var(--wp--preset--color--white) !important;}.has-pale-pink-border-color{border-color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-border-color{border-color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-border-color{border-color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-border-color{border-color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-border-color{border-color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-border-color{border-color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-border-color{border-color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-border-color{border-color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-border-color{border-color: var(--wp--preset--color--vivid-purple) !important;}.has-vivid-cyan-blue-to-vivid-purple-gradient-background{background: var(--wp--preset--gradient--vivid-cyan-blue-to-vivid-purple) !important;}.has-light-green-cyan-to-vivid-green-cyan-gradient-background{background: var(--wp--preset--gradient--light-green-cyan-to-vivid-green-cyan) !important;}.has-luminous-vivid-amber-to-luminous-vivid-orange-gradient-background{background: var(--wp--preset--gradient--luminous-vivid-amber-to-luminous-vivid-orange) !important;}.has-luminous-vivid-orange-to-vivid-red-gradient-background{background: var(--wp--preset--gradient--luminous-vivid-orange-to-vivid-red) !important;}.has-very-light-gray-to-cyan-bluish-gray-gradient-background{background: var(--wp--preset--gradient--very-light-gray-to-cyan-bluish-gray) !important;}.has-cool-to-warm-spectrum-gradient-background{background: var(--wp--preset--gradient--cool-to-warm-spectrum) !important;}.has-blush-light-purple-gradient-background{background: var(--wp--preset--gradient--blush-light-purple) !important;}.has-blush-bordeaux-gradient-background{background: var(--wp--preset--gradient--blush-bordeaux) !important;}.has-luminous-dusk-gradient-background{background: var(--wp--preset--gradient--luminous-dusk) !important;}.has-pale-ocean-gradient-background{background: var(--wp--preset--gradient--pale-ocean) !important;}.has-electric-grass-gradient-background{background: var(--wp--preset--gradient--electric-grass) !important;}.has-midnight-gradient-background{background: var(--wp--preset--gradient--midnight) !important;}.has-small-font-size{font-size: var(--wp--preset--font-size--small) !important;}.has-medium-font-size{font-size: var(--wp--preset--font-size--medium) !important;}.has-large-font-size{font-size: var(--wp--preset--font-size--large) !important;}.has-x-large-font-size{font-size: var(--wp--preset--font-size--x-large) !important;}
+/*# sourceURL=global-styles-inline-css */
+</style>
+
+<link data-minify="1" rel='stylesheet' id='default2-css' href='https://bloomfieldcapital.com/wp-content/cache/min/1/wp-content/themes/bloomfield-3/app/css/default.css?ver=1775488125' type='text/css' media='all' />
+<link data-minify="1" rel='stylesheet' id='home-css' href='https://bloomfieldcapital.com/wp-content/cache/min/1/wp-content/themes/bloomfield-3/app/css/home.css?ver=1775488125' type='text/css' media='all' />
+<script type="text/javascript" src="https://bloomfieldcapital.com/wp-includes/js/jquery/jquery.min.js?ver=3.7.1" id="jquery-core-js" data-rocket-defer defer></script>
+<script type="text/javascript" src="https://bloomfieldcapital.com/wp-includes/js/jquery/jquery-migrate.min.js?ver=3.4.1" id="jquery-migrate-js" data-rocket-defer defer></script>
+<link rel="https://api.w.org/" href="https://bloomfieldcapital.com/wp-json/" /><link rel="alternate" title="JSON" type="application/json" href="https://bloomfieldcapital.com/wp-json/wp/v2/pages/20" /><link rel="EditURI" type="application/rsd+xml" title="RSD" href="https://bloomfieldcapital.com/xmlrpc.php?rsd" />
+<meta name="generator" content="WordPress 6.9.4" />
+<link rel='shortlink' href='https://bloomfieldcapital.com/' />
+<style>
+body .ucg-locations-list-component .locations {
+  justify-content: flex-start !important;
+}
+</style>	<link rel="icon" href="https://bloomfieldcapital.com/wp-content/uploads/2016/07/cropped-bloomfieldfavicon-32x32.png" sizes="32x32" />
+<link rel="icon" href="https://bloomfieldcapital.com/wp-content/uploads/2016/07/cropped-bloomfieldfavicon-192x192.png" sizes="192x192" />
+<link rel="apple-touch-icon" href="https://bloomfieldcapital.com/wp-content/uploads/2016/07/cropped-bloomfieldfavicon-180x180.png" />
+<meta name="msapplication-TileImage" content="https://bloomfieldcapital.com/wp-content/uploads/2016/07/cropped-bloomfieldfavicon-270x270.png" />
+		<style type="text/css" id="wp-custom-css">
+			@media (min-width: 2001px) {
+	.home .ucg-intro-transaction .ucg-words-component {
+		grid-column: 1 / span 7;
+		padding: 3em calc((100vw - 1340px)/4) 3em calc((100vw - 1340px)/2);
+	}
+	.home .ucg-intro-transaction .ucg-recent-transactions {
+		grid-column: 8 /span 5;
+	}
+}
+@media (min-width: 3051px) {
+	.home .ucg-intro-transaction .ucg-words-component {
+		padding: 3em 5em 3em calc((100vw - 1340px)/2);
+	}
+}		</style>
+		<noscript><style id="rocket-lazyload-nojs-css">.rll-youtube-player, [data-lazy-src]{display:none !important;}</style></noscript>  <style id="wpr-lazyload-bg-container"></style><style id="wpr-lazyload-bg-exclusion"></style>
+<noscript>
+<style id="wpr-lazyload-bg-nostyle"></style>
+</noscript>
+<script type="application/javascript">const rocket_pairs = []; const rocket_excluded_pairs = [];</script><meta name="generator" content="WP Rocket 3.21.0.1" data-wpr-features="wpr_lazyload_css_bg_img wpr_delay_js wpr_defer_js wpr_minify_js wpr_lazyload_images wpr_preconnect_external_domains wpr_auto_preload_fonts wpr_oci wpr_minify_css wpr_preload_links wpr_host_fonts_locally wpr_desktop" /></head>
+  <body class="home wp-singular page-template-default page page-id-20 wp-theme-bloomfield-3">
+	<!-- Google Tag Manager (noscript) -->
+	<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-KF38BR"
+	height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+	<!-- End Google Tag Manager (noscript) -->
+
+  <header  class="ucg-site-header-component" id="site-header">
+  <div  class="bar">
+    <a class="site-logo" href="/">
+      <img alt="Bloomfield Capital" height="auto" src="https://bloomfieldcapital.com/wp-content/themes/bloomfield-3/img/bloomfield_hor_logo.svg" width="240">
+    </a>
+    <div  class="ucg-menu-button">
+  <div class="button">
+    <span class="bar"></span>
+  </div>
+</div>  </div>
+  <nav class="menus">
+    <div class="menu-left-nav-container"><ul id="menu-left-nav" class="menu"><li id="menu-item-627" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-627"><a href="tel:+1-877-690-7111">Tel +1-877-690-7111</a></li>
+<li id="menu-item-628" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-628"><a href="mailto:deals@bloomfieldcapital.com">deals@bloomfieldcapital.com</a></li>
+<li id="menu-item-642" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-642"><a target="_blank" href="https://bloomfieldcapital.sharesecurely.com/login">Investor Login</a></li>
+</ul></div>    <div class="menu-right-nav-container"><ul id="menu-right-nav" class="menu"><li id="menu-item-1172" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-1172"><a href="https://bloomfieldcapital.com/about-us/">About</a></li>
+<li id="menu-item-631" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-631"><a href="https://bloomfieldcapital.com/bridge-loans/">Bridge Loans</a></li>
+<li id="menu-item-632" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-632"><a href="https://bloomfieldcapital.com/equity/">Equity</a></li>
+<li id="menu-item-633" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-633"><a href="https://bloomfieldcapital.com/experience/">Experience</a></li>
+<li id="menu-item-18" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-18"><a href="https://bloomfieldcapital.com/news/">News</a></li>
+<li id="menu-item-17" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-17"><a href="https://bloomfieldcapital.com/contact/">Contact</a></li>
+</ul></div>  </nav>
+</header>  <div  class="ucg-slider-1-component">
+    <div  class="images">
+      <div  class="inset">
+              <div class="image image-1">
+          <img alt="Detroit Commercial Real Estate Investments" height="auto" sizes="(max-width: 1600px) 100vw, 1600px" srcset="https://bloomfieldcapital.com/wp-content/uploads/2016/06/Bloomfield_Detroit_Skyline.jpg 1600w, https://bloomfieldcapital.com/wp-content/uploads/2016/06/Bloomfield_Detroit_Skyline-300x143.jpg 300w, https://bloomfieldcapital.com/wp-content/uploads/2016/06/Bloomfield_Detroit_Skyline-768x366.jpg 768w, https://bloomfieldcapital.com/wp-content/uploads/2016/06/Bloomfield_Detroit_Skyline-1024x488.jpg 1024w" width="100%">
+        </div>
+                <div class="image image-2">
+          <img alt="Chicago Commercial Real Estate" height="auto" sizes="(max-width: 1600px) 100vw, 1600px" srcset="https://bloomfieldcapital.com/wp-content/uploads/2016/06/Bloomfield_Chicago_Skyline.jpg 1600w, https://bloomfieldcapital.com/wp-content/uploads/2016/06/Bloomfield_Chicago_Skyline-300x111.jpg 300w, https://bloomfieldcapital.com/wp-content/uploads/2016/06/Bloomfield_Chicago_Skyline-768x284.jpg 768w, https://bloomfieldcapital.com/wp-content/uploads/2016/06/Bloomfield_Chicago_Skyline-1024x379.jpg 1024w" width="100%">
+        </div>
+                <div class="image image-3">
+          <img alt="Denver Commercial Real Estate Financing" height="auto" sizes="(max-width: 1600px) 100vw, 1600px" srcset="https://bloomfieldcapital.com/wp-content/uploads/2016/06/Bloomfield_Denver_Skyline.jpg 1600w, https://bloomfieldcapital.com/wp-content/uploads/2016/06/Bloomfield_Denver_Skyline-300x157.jpg 300w, https://bloomfieldcapital.com/wp-content/uploads/2016/06/Bloomfield_Denver_Skyline-768x401.jpg 768w, https://bloomfieldcapital.com/wp-content/uploads/2016/06/Bloomfield_Denver_Skyline-1024x534.jpg 1024w" width="100%">
+        </div>
+                <div class="image image-4">
+          <img alt="New York City Preferred Equity Investments in Commercial Real Estate" height="auto" sizes="(max-width: 1600px) 100vw, 1600px" srcset="https://bloomfieldcapital.com/wp-content/uploads/2016/06/Bloomfield_newyork_skyline_1600x763.jpg 1600w, https://bloomfieldcapital.com/wp-content/uploads/2016/06/Bloomfield_newyork_skyline_1600x763-300x143.jpg 300w, https://bloomfieldcapital.com/wp-content/uploads/2016/06/Bloomfield_newyork_skyline_1600x763-768x366.jpg 768w, https://bloomfieldcapital.com/wp-content/uploads/2016/06/Bloomfield_newyork_skyline_1600x763-1024x488.jpg 1024w" width="100%">
+        </div>
+              </div>
+    </div>
+    <div  class="words">
+            <h2>The Direct Bridge Lender and Equity Provider for Urgent Projects</h2>
+                <h3>Bloomfield Capital</h3>
+            </div>
+  </div>
+  <div  class="ucg-intro-transaction">
+    <div  class="ucg-words-component">
+        <div  class="words">
+        <h3>Bloomfield Capital</h3>
+<p>For over 17 years, Bloomfield Capital has been a leader in providing flexible and responsive capital to the commercial real estate industry nationwide.</p>
+      </div>
+        </div>
+    <div  class="ucg-recent-transactions">
+    <div  class="transactions">
+              <div class="transaction transaction-1 retail">
+                  <h3>Recent Retail</h3>
+                    <p class="amount">$10,500,000</p>
+                    <p class="stats">Wisconsin | Senior Bridge Loan | April 2026</p>
+                  </div>
+                <div class="transaction transaction-2 hospitality">
+                  <h3>Recent HOSPITALITY</h3>
+                    <p class="amount">$12,500,000</p>
+                    <p class="stats">Florida | Senior Bridge Loan | February 2026</p>
+                  </div>
+                <div class="transaction transaction-3 healthcare">
+                  <h3>Recent HEALTHCARE</h3>
+                    <p class="amount">$13,000,000</p>
+                    <p class="stats">California | Senior Bridge Loan | January 2026</p>
+                  </div>
+                <div class="transaction transaction-4 hospitality">
+                  <h3>Recent HOSPITALITY</h3>
+                    <p class="amount">$6,000,000</p>
+                    <p class="stats">Florida | Bridge Loan | December 2025</p>
+                  </div>
+                <div class="transaction transaction-5 hospitality">
+                  <h3>Recent HOSPITALITY</h3>
+                    <p class="amount">$8,000,000</p>
+                    <p class="stats">Pennsylvania | Bridge Loan | November 2025</p>
+                  </div>
+                <div class="transaction transaction-6 industrial">
+                  <h3>Recent Industrial</h3>
+                    <p class="amount">$11,500,000</p>
+                    <p class="stats">Arizona | Bridge Loan | September 2025</p>
+                  </div>
+                <div class="transaction transaction-7 multifamily">
+                  <h3>Recent Multifamily</h3>
+                    <p class="amount">$6,700,000</p>
+                    <p class="stats">Arkansas | Bridge Loan | August 2025</p>
+                  </div>
+                <div class="transaction transaction-8 healthcare">
+                  <h3>Recent Healthcare</h3>
+                    <p class="amount">$5,800,000</p>
+                    <p class="stats"> Connecticut | Bridge Loan | June 2025</p>
+                  </div>
+                <div class="transaction transaction-9 industrial-outdoor-storage">
+                  <h3>Recent Industrial Outdoor Storage</h3>
+                    <p class="amount">$7,000,000</p>
+                    <p class="stats">Michigan | Bridge Loan | May 2025</p>
+                  </div>
+                <div class="transaction transaction-10 industrial">
+                  <h3>Recent Industrial</h3>
+                    <p class="amount">$16,000,000</p>
+                    <p class="stats">Texas | Bridge Loan | April 2025</p>
+                  </div>
+            </div>
+    <p class="link"><a class="button-1" href="/experience/">See more closed transactions &#187;</a></p>
+  </div>
+  </div>
+  <div  class="ucg-list-1-component">
+    <div  class="items">
+          <div  class="item item-1 teal">
+              <div class="glyph">
+          <div class="fs1" aria-hidden="true" data-icon=""></div>
+        </div>
+                <h3>Direct Lender and Equity Provider</h3>
+                <div class="words"><p>We are a direct investor, deploying capital that we manage exclusively.  We make the investment decisions, and we manage our investments in-house.  Speak directly to a decision-maker. </p>
+</div>
+                  <p class="link"><a class="button-1" href="https://bloomfieldcapital.com/contact/" >Contact Us</a></p>
+              </div>
+            <div  class="item item-2 orange">
+              <div class="glyph">
+          <div class="fs1" aria-hidden="true" data-icon="N"></div>
+        </div>
+                <h3>Experienced and Trusted Team </h3>
+                <div class="words"><p>Honest, Reliable, and Trusted.<br />
+That’s the difference we’ve been providing clients for over 17 years.</p>
+</div>
+                  <p class="link"><a class="button-1" href="https://bloomfieldcapital.com/about-us/" >About Us</a></p>
+              </div>
+            <div  class="item item-3 navy">
+              <div class="glyph">
+          <div class="fs1" aria-hidden="true" data-icon=""></div>
+        </div>
+                <h3>Fast Results</h3>
+                <div class="words"><p>We know your deal is moving fast. We are prepared to respond to your urgent need.</p>
+</div>
+                  <p class="link"><a class="button-1" href="https://bloomfieldcapital.com/contact/" >Ask Us</a></p>
+              </div>
+          </div>
+  </div>
+    <div  class="ucg-call-to-action-component">
+        <div  class="description">
+        <h4>How can we help you?</h4>
+<p>With us, you can have complete confidence that your important project is in experienced, tactical and confident hands.</p>
+      </div>
+            <p class="link"><a class="button-2" href="/contact/" target="">Contact Us</a></p>
+        </div>
+    <div  class="ucg-breadcrumbs">
+    <p id="breadcrumbs"><span><span class="breadcrumb_last" aria-current="page">Home</span></span></p>  </div>
+    <div  class="ucg-partners-list-component">
+    <h3>Associations</h3>
+    <div  class="partners">
+              <div  class="partner">
+        <a href="https://www.mba.org/" target="_blank"><img alt="Partner logo" height="auto" src="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%200'%3E%3C/svg%3E" title="Bloomfield Capital is an active member of the Mortgage Bankers Association providing commercial mortgage bankers and brokers with access to private capital for their commercial real estate clients. 
+" width="100%" data-lazy-src="https://bloomfieldcapital.com/wp-content/uploads/2018/01/MBA_Memebr_logo.png"><noscript><img alt="Partner logo" height="auto" src="https://bloomfieldcapital.com/wp-content/uploads/2018/01/MBA_Memebr_logo.png" title="Bloomfield Capital is an active member of the Mortgage Bankers Association providing commercial mortgage bankers and brokers with access to private capital for their commercial real estate clients. 
+" width="100%"></noscript></a>
+        </div>
+                <div  class="partner">
+        <a href="https://www.crefc.org/" target="_blank"><img alt="Partner logo" height="auto" src="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%200'%3E%3C/svg%3E" title="" width="100%" data-lazy-src="https://bloomfieldcapital.com/wp-content/uploads/2026/01/1767739729550.png"><noscript><img alt="Partner logo" height="auto" src="https://bloomfieldcapital.com/wp-content/uploads/2026/01/1767739729550.png" title="" width="100%"></noscript></a>
+        </div>
+                <div  class="partner">
+        <a href="https://www.nmhc.org" target="_blank"><img alt="Partner logo" height="auto" src="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%200'%3E%3C/svg%3E" title="" width="100%" data-lazy-src="https://bloomfieldcapital.com/wp-content/uploads/2024/04/Screenshot-2024-04-17-at-11.37.58 PM.png"><noscript><img alt="Partner logo" height="auto" src="https://bloomfieldcapital.com/wp-content/uploads/2024/04/Screenshot-2024-04-17-at-11.37.58 PM.png" title="" width="100%"></noscript></a>
+        </div>
+            </div>
+  </div>
+    <div  class="ucg-locations-list-component">
+    <h3>Locations</h3>
+    <div  class="locations">
+          <div  class="location">
+                <p class="name"><a href="https://bloomfieldcapital.com/newyork/">New York,  NY</a></p>
+                    <p class="phone"><a href="tel:+1-646-921-7070">646-921-7070</a></p>
+              </div>
+            <div  class="location">
+                <p class="name"><a href="https://bloomfieldcapital.com/detroit/">Detroit,  MI</a></p>
+                    <p class="phone"><a href="tel:+1-248-745-1700">248-745-1700</a></p>
+                  <p class="description">Main Office</p>
+              </div>
+          </div>
+  </div>
+  
+<div  class="footer-2">
+    <p class="linkedin"><a class="button-3" href="https://www.linkedin.com/company/1228647" target="_blank"><i class="fa-brands fa-linkedin"></i> <span class="label">LinkedIn</span></a></p>
+    <p class="subscribe"><a class="button-1" href="/subscribe/">Join our email list &#187;</a></p>
+  
+  <div  class="ucg-disclaimer-component">
+        <h4 class="tagline">Direct Lender | Brokers Protected</h4>
+            <p class="links">&copy; 2026 Bloomfield Capital | CFL Lic. 60DBO-93486 | <a href="https://bloomfieldcapital.com/legal/" target="">Legal</a> | <a href="https://upshiftcreative.com" target="_blank">Site Design</a> | <a href="javascript:void(0)" id="triggerId">Accessibility</a></p>
+            <p class="disclaimer">Bloomfield Capital Holdings, LLC is a limited liability company and is registered as an Investment Advisor with the U.S. Securities and Exchange Commission (“SEC”) (SEC# 801-113423, CRD# 169198). Please refer to the Investment Adviser Public Disclosure website, operated by the U.S. Securities and Exchange Commission, at <a href="https://www.adviserinfo.sec.gov" target="_blank">www.adviserinfo.sec.gov</a>, which contains the most recent versions of the Firm’s Form ADV disclosure documents.</p>
+        </div>
+    
+</div>
+		<style>
+.version-main {
+    display: inline-block;
+    width: 100%;
+    float: left;
+    position: relative;
+    z-index: 99999999999999 !important;
+    top: 0;
+    left: 0px;
+}
+p.version-message {
+    width: 100% !important;
+    display: inline-block;
+    font-size: 10px;
+    text-align: right;
+    margin: 0;
+    color: black;
+}
+</style>
+<div  class="version-main">
+	<p class="version-message"> V2</p>
+</div>
+<script type="text/rocketlazyloadscript" data-rocket-type='text/javascript'>
+/*
+(function (d, t) {
+  var bh = d.createElement(t), s = d.getElementsByTagName(t)[0];
+  bh.type = 'text/javascript';
+  bh.src = 'https://www.bugherd.com/sidebarv2.js?apikey=ejjiktmth7y7sje4gxequq';
+  s.parentNode.insertBefore(bh, s);
+  })(document, 'script');
+*/
+</script>
+
+<script type="speculationrules">
+{"prefetch":[{"source":"document","where":{"and":[{"href_matches":"/*"},{"not":{"href_matches":["/wp-*.php","/wp-admin/*","/wp-content/uploads/*","/wp-content/*","/wp-content/plugins/*","/wp-content/themes/bloomfield-3/*","/*\\?(.+)"]}},{"not":{"selector_matches":"a[rel~=\"nofollow\"]"}},{"not":{"selector_matches":".no-prefetch, .no-prefetch a"}}]},"eagerness":"conservative"}]}
+</script>
+<span class="site-not-loading"></span>
+
+<!-- Ad Tracking 2026-2-24 -->
+<script type="text/rocketlazyloadscript" src=https://js.ipredictive.com/viant_universal_pixel.js data-rocket-type="text/javascript"></script>
+<script type="text/rocketlazyloadscript" data-rocket-type="text/javascript">
+new ViantUniversalPixel(117015, 'https://ad.ipredictive.com/d/track/event',
+{
+"cuid": "[Bloomfielduser]",
+"ps": "0"
+}).fire();
+</script>
+
+<noscript>
+<img src=https://ad.ipredictive.com/d/track/event?upid=117015&url=[url]&cuid=[Bloomfielduser]&cache_buster=[timestamp]&ps=1 alt="" height="1" width="1" style="display:none" />
+</noscript>
+<!-- End Ad Tracking 2026-2-24 --><script type="text/javascript" id="rocket-browser-checker-js-after">
+/* <![CDATA[ */
+"use strict";var _createClass=function(){function defineProperties(target,props){for(var i=0;i<props.length;i++){var descriptor=props[i];descriptor.enumerable=descriptor.enumerable||!1,descriptor.configurable=!0,"value"in descriptor&&(descriptor.writable=!0),Object.defineProperty(target,descriptor.key,descriptor)}}return function(Constructor,protoProps,staticProps){return protoProps&&defineProperties(Constructor.prototype,protoProps),staticProps&&defineProperties(Constructor,staticProps),Constructor}}();function _classCallCheck(instance,Constructor){if(!(instance instanceof Constructor))throw new TypeError("Cannot call a class as a function")}var RocketBrowserCompatibilityChecker=function(){function RocketBrowserCompatibilityChecker(options){_classCallCheck(this,RocketBrowserCompatibilityChecker),this.passiveSupported=!1,this._checkPassiveOption(this),this.options=!!this.passiveSupported&&options}return _createClass(RocketBrowserCompatibilityChecker,[{key:"_checkPassiveOption",value:function(self){try{var options={get passive(){return!(self.passiveSupported=!0)}};window.addEventListener("test",null,options),window.removeEventListener("test",null,options)}catch(err){self.passiveSupported=!1}}},{key:"initRequestIdleCallback",value:function(){!1 in window&&(window.requestIdleCallback=function(cb){var start=Date.now();return setTimeout(function(){cb({didTimeout:!1,timeRemaining:function(){return Math.max(0,50-(Date.now()-start))}})},1)}),!1 in window&&(window.cancelIdleCallback=function(id){return clearTimeout(id)})}},{key:"isDataSaverModeOn",value:function(){return"connection"in navigator&&!0===navigator.connection.saveData}},{key:"supportsLinkPrefetch",value:function(){var elem=document.createElement("link");return elem.relList&&elem.relList.supports&&elem.relList.supports("prefetch")&&window.IntersectionObserver&&"isIntersecting"in IntersectionObserverEntry.prototype}},{key:"isSlowConnection",value:function(){return"connection"in navigator&&"effectiveType"in navigator.connection&&("2g"===navigator.connection.effectiveType||"slow-2g"===navigator.connection.effectiveType)}}]),RocketBrowserCompatibilityChecker}();
+//# sourceURL=rocket-browser-checker-js-after
+/* ]]> */
+</script>
+<script type="text/javascript" id="rocket-preload-links-js-extra">
+/* <![CDATA[ */
+var RocketPreloadLinksConfig = {"excludeUris":"/(?:.+/)?feed(?:/(?:.+/?)?)?$|/(?:.+/)?embed/|/(index.php/)?(.*)wp-json(/.*|$)|/refer/|/go/|/recommend/|/recommends/","usesTrailingSlash":"1","imageExt":"jpg|jpeg|gif|png|tiff|bmp|webp|avif|pdf|doc|docx|xls|xlsx|php","fileExt":"jpg|jpeg|gif|png|tiff|bmp|webp|avif|pdf|doc|docx|xls|xlsx|php|html|htm","siteUrl":"https://bloomfieldcapital.com","onHoverDelay":"100","rateThrottle":"3"};
+//# sourceURL=rocket-preload-links-js-extra
+/* ]]> */
+</script>
+<script type="text/javascript" id="rocket-preload-links-js-after">
+/* <![CDATA[ */
+(function() {
+"use strict";var r="function"==typeof Symbol&&"symbol"==typeof Symbol.iterator?function(e){return typeof e}:function(e){return e&&"function"==typeof Symbol&&e.constructor===Symbol&&e!==Symbol.prototype?"symbol":typeof e},e=function(){function i(e,t){for(var n=0;n<t.length;n++){var i=t[n];i.enumerable=i.enumerable||!1,i.configurable=!0,"value"in i&&(i.writable=!0),Object.defineProperty(e,i.key,i)}}return function(e,t,n){return t&&i(e.prototype,t),n&&i(e,n),e}}();function i(e,t){if(!(e instanceof t))throw new TypeError("Cannot call a class as a function")}var t=function(){function n(e,t){i(this,n),this.browser=e,this.config=t,this.options=this.browser.options,this.prefetched=new Set,this.eventTime=null,this.threshold=1111,this.numOnHover=0}return e(n,[{key:"init",value:function(){!this.browser.supportsLinkPrefetch()||this.browser.isDataSaverModeOn()||this.browser.isSlowConnection()||(this.regex={excludeUris:RegExp(this.config.excludeUris,"i"),images:RegExp(".("+this.config.imageExt+")$","i"),fileExt:RegExp(".("+this.config.fileExt+")$","i")},this._initListeners(this))}},{key:"_initListeners",value:function(e){-1<this.config.onHoverDelay&&document.addEventListener("mouseover",e.listener.bind(e),e.listenerOptions),document.addEventListener("mousedown",e.listener.bind(e),e.listenerOptions),document.addEventListener("touchstart",e.listener.bind(e),e.listenerOptions)}},{key:"listener",value:function(e){var t=e.target.closest("a"),n=this._prepareUrl(t);if(null!==n)switch(e.type){case"mousedown":case"touchstart":this._addPrefetchLink(n);break;case"mouseover":this._earlyPrefetch(t,n,"mouseout")}}},{key:"_earlyPrefetch",value:function(t,e,n){var i=this,r=setTimeout(function(){if(r=null,0===i.numOnHover)setTimeout(function(){return i.numOnHover=0},1e3);else if(i.numOnHover>i.config.rateThrottle)return;i.numOnHover++,i._addPrefetchLink(e)},this.config.onHoverDelay);t.addEventListener(n,function e(){t.removeEventListener(n,e,{passive:!0}),null!==r&&(clearTimeout(r),r=null)},{passive:!0})}},{key:"_addPrefetchLink",value:function(i){return this.prefetched.add(i.href),new Promise(function(e,t){var n=document.createElement("link");n.rel="prefetch",n.href=i.href,n.onload=e,n.onerror=t,document.head.appendChild(n)}).catch(function(){})}},{key:"_prepareUrl",value:function(e){if(null===e||"object"!==(void 0===e?"undefined":r(e))||!1 in e||-1===["http:","https:"].indexOf(e.protocol))return null;var t=e.href.substring(0,this.config.siteUrl.length),n=this._getPathname(e.href,t),i={original:e.href,protocol:e.protocol,origin:t,pathname:n,href:t+n};return this._isLinkOk(i)?i:null}},{key:"_getPathname",value:function(e,t){var n=t?e.substring(this.config.siteUrl.length):e;return n.startsWith("/")||(n="/"+n),this._shouldAddTrailingSlash(n)?n+"/":n}},{key:"_shouldAddTrailingSlash",value:function(e){return this.config.usesTrailingSlash&&!e.endsWith("/")&&!this.regex.fileExt.test(e)}},{key:"_isLinkOk",value:function(e){return null!==e&&"object"===(void 0===e?"undefined":r(e))&&(!this.prefetched.has(e.href)&&e.origin===this.config.siteUrl&&-1===e.href.indexOf("?")&&-1===e.href.indexOf("#")&&!this.regex.excludeUris.test(e.href)&&!this.regex.images.test(e.href))}}],[{key:"run",value:function(){"undefined"!=typeof RocketPreloadLinksConfig&&new n(new RocketBrowserCompatibilityChecker({capture:!0,passive:!0}),RocketPreloadLinksConfig).init()}}]),n}();t.run();
+}());
+
+//# sourceURL=rocket-preload-links-js-after
+/* ]]> */
+</script>
+<script type="text/javascript" id="rocket_lazyload_css-js-extra">
+/* <![CDATA[ */
+var rocket_lazyload_css_data = {"threshold":"300"};
+//# sourceURL=rocket_lazyload_css-js-extra
+/* ]]> */
+</script>
+<script type="text/javascript" id="rocket_lazyload_css-js-after">
+/* <![CDATA[ */
+!function o(n,c,a){function u(t,e){if(!c[t]){if(!n[t]){var r="function"==typeof require&&require;if(!e&&r)return r(t,!0);if(s)return s(t,!0);throw(e=new Error("Cannot find module '"+t+"'")).code="MODULE_NOT_FOUND",e}r=c[t]={exports:{}},n[t][0].call(r.exports,function(e){return u(n[t][1][e]||e)},r,r.exports,o,n,c,a)}return c[t].exports}for(var s="function"==typeof require&&require,e=0;e<a.length;e++)u(a[e]);return u}({1:[function(e,t,r){"use strict";{const c="undefined"==typeof rocket_pairs?[]:rocket_pairs,a=(("undefined"==typeof rocket_excluded_pairs?[]:rocket_excluded_pairs).map(t=>{var e=t.selector;document.querySelectorAll(e).forEach(e=>{e.setAttribute("data-rocket-lazy-bg-"+t.hash,"excluded")})}),document.querySelector("#wpr-lazyload-bg-container"));var o=rocket_lazyload_css_data.threshold||300;const u=new IntersectionObserver(e=>{e.forEach(t=>{t.isIntersecting&&c.filter(e=>t.target.matches(e.selector)).map(t=>{var e;t&&((e=document.createElement("style")).textContent=t.style,a.insertAdjacentElement("afterend",e),t.elements.forEach(e=>{u.unobserve(e),e.setAttribute("data-rocket-lazy-bg-"+t.hash,"loaded")}))})})},{rootMargin:o+"px"});function n(){0<(0<arguments.length&&void 0!==arguments[0]?arguments[0]:[]).length&&c.forEach(t=>{try{document.querySelectorAll(t.selector).forEach(e=>{"loaded"!==e.getAttribute("data-rocket-lazy-bg-"+t.hash)&&"excluded"!==e.getAttribute("data-rocket-lazy-bg-"+t.hash)&&(u.observe(e),(t.elements||=[]).push(e))})}catch(e){console.error(e)}})}n(),function(){const r=window.MutationObserver;return function(e,t){if(e&&1===e.nodeType)return(t=new r(t)).observe(e,{attributes:!0,childList:!0,subtree:!0}),t}}()(document.querySelector("body"),n)}},{}]},{},[1]);
+//# sourceURL=rocket_lazyload_css-js-after
+/* ]]> */
+</script>
+<script type="text/javascript" id="gforms_recaptcha_recaptcha-js-extra">
+/* <![CDATA[ */
+var gforms_recaptcha_recaptcha_strings = {"nonce":"139cfe9264","disconnect":"Disconnecting","change_connection_type":"Resetting","spinner":"https://bloomfieldcapital.com/wp-content/plugins/gravityforms/images/spinner.svg","connection_type":"enterprise","disable_badge":"1","change_connection_type_title":"Change Connection Type","change_connection_type_message":"Changing the connection type will delete your current settings.  Do you want to proceed?","disconnect_title":"Disconnect","disconnect_message":"Disconnecting from reCAPTCHA will delete your current settings.  Do you want to proceed?","site_key":"6LdX3PcpAAAAAKp8v6oOGAdWTXQAkdGwdg0VRcao","ajaxurl":"https://bloomfieldcapital.com/wp-admin/admin-ajax.php"};
+//# sourceURL=gforms_recaptcha_recaptcha-js-extra
+/* ]]> */
+</script>
+<script data-minify="1" type="text/javascript" src="https://bloomfieldcapital.com/wp-content/cache/min/1/recaptcha/enterprise.js?ver=1775488125" id="gforms_recaptcha_recaptcha-js" defer="defer" data-wp-strategy="defer"></script>
+<script type="text/javascript" src="https://bloomfieldcapital.com/wp-content/plugins/gravityformsrecaptcha/js/frontend.min.js?ver=2.1.0" id="gforms_recaptcha_frontend-js" defer="defer" data-wp-strategy="defer"></script>
+<script data-minify="1" type="text/javascript" src="https://bloomfieldcapital.com/wp-content/cache/min/1/wp-content/themes/bloomfield-3/app/js/default.js?ver=1775488126" id="default2-js" data-rocket-defer defer></script>
+<script data-minify="1" type="text/javascript" src="https://bloomfieldcapital.com/wp-content/cache/min/1/wp-content/themes/bloomfield-3/app/js/home.js?ver=1775488126" id="home-js" data-rocket-defer defer></script>
+<script>window.lazyLoadOptions=[{elements_selector:"img[data-lazy-src],.rocket-lazyload",data_src:"lazy-src",data_srcset:"lazy-srcset",data_sizes:"lazy-sizes",class_loading:"lazyloading",class_loaded:"lazyloaded",threshold:300,callback_loaded:function(element){if(element.tagName==="IFRAME"&&element.dataset.rocketLazyload=="fitvidscompatible"){if(element.classList.contains("lazyloaded")){if(typeof window.jQuery!="undefined"){if(jQuery.fn.fitVids){jQuery(element).parent().fitVids()}}}}}},{elements_selector:".rocket-lazyload",data_src:"lazy-src",data_srcset:"lazy-srcset",data_sizes:"lazy-sizes",class_loading:"lazyloading",class_loaded:"lazyloaded",threshold:300,}];window.addEventListener('LazyLoad::Initialized',function(e){var lazyLoadInstance=e.detail.instance;if(window.MutationObserver){var observer=new MutationObserver(function(mutations){var image_count=0;var iframe_count=0;var rocketlazy_count=0;mutations.forEach(function(mutation){for(var i=0;i<mutation.addedNodes.length;i++){if(typeof mutation.addedNodes[i].getElementsByTagName!=='function'){continue}
+if(typeof mutation.addedNodes[i].getElementsByClassName!=='function'){continue}
+images=mutation.addedNodes[i].getElementsByTagName('img');is_image=mutation.addedNodes[i].tagName=="IMG";iframes=mutation.addedNodes[i].getElementsByTagName('iframe');is_iframe=mutation.addedNodes[i].tagName=="IFRAME";rocket_lazy=mutation.addedNodes[i].getElementsByClassName('rocket-lazyload');image_count+=images.length;iframe_count+=iframes.length;rocketlazy_count+=rocket_lazy.length;if(is_image){image_count+=1}
+if(is_iframe){iframe_count+=1}}});if(image_count>0||iframe_count>0||rocketlazy_count>0){lazyLoadInstance.update()}});var b=document.getElementsByTagName("body")[0];var config={childList:!0,subtree:!0};observer.observe(b,config)}},!1)</script><script data-no-minify="1" async src="https://bloomfieldcapital.com/wp-content/plugins/wp-rocket/assets/js/lazyload/17.8.3/lazyload.min.js"></script>
+
+<script type='application/ld+json'>
+{
+  "@context": "http://www.schema.org",
+  "@type": "FinancialService",
+  "name": "Bloomfield Capital",
+  "url": "https://www.bloomfieldcapital.com/",
+  "logo": "https://bloomfieldcapital.com/wp-content/uploads/2017/03/Bloomfield_logo-vertical_3-3jl.jpg",
+  "image": "https://bloomfieldcapital.com/wp-content/uploads/2017/03/Bloomfield_logo-vertical_3-3jl.jpg",
+  "description": "Bloomfield Capital�s team draws from a broad variety of real estate experience. Our objective is to leverage an extensive depth of real estate and finance expertise to the benefit of high-quality commercial and multi-family residential real estate projects nationwide. With a focus on commercial bridge loan opportunities between $1 million and $15 million, Bloomfield Capital is a direct lender and capital partner.",
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "280 N. Old Woodward Ave, Suite 104",
+    "addressLocality": "Birmingham",
+    "addressRegion": "MI",
+    "postalCode": "48009",
+    "addressCountry": "United States"
+  },
+  "geo": {
+    "@type": "GeoCoordinates",
+    "latitude": "42.548011",
+    "longitude": "-83.214722"
+  },
+  "openingHours": "Mo, Tu, We, Th, Fr 08:00-17:00",
+  "contactPoint": {
+    "@type": "ContactPoint",
+		"contactType": "sales",
+    "telephone": "+1(248) 745-1700"
+  }
+}
+ </script>
+<script type='application/ld+json'>
+{
+  "@context": "http://www.schema.org",
+  "@type": "Corporation",
+  "name": "Bloomfield Capital",
+  "url": "https://bloomfieldcapital.com",
+  "sameAs": [
+    "",
+    "",
+    "https://twitter.com/bloomcapital1",
+    "https://www.linkedin.com/company/bloomfield-capital"
+  ],
+  "logo": "https://bloomfieldcapital.com/wp-content/uploads/2017/03/Bloomfield_logo-vertical_3-3jl.jpg",
+  "image": "https://bloomfieldcapital.com/wp-content/uploads/2017/03/Bloomfield_logo-vertical_3-3jl.jpg",
+  "description": "Bloomfield Capital�s team draws from a broad variety of real estate experience. Our objective is to leverage an extensive depth of real estate and finance expertise to the benefit of high-quality commercial and multi-family residential real estate projects nationwide. With a focus on commercial bridge loan opportunities between $1 million and $15 million, Bloomfield Capital is a direct lender and capital partner."
+}
+</script>
+
+<style>
+.gform_legacy_markup_wrapper .gform_validation_container, .gform_validation_container, body .gform_legacy_markup_wrapper .gform_body ul.gform_fields li.gfield.gform_validation_container, body .gform_legacy_markup_wrapper li.gform_validation_container, body .gform_legacy_markup_wrapper ul.gform_fields li.gfield.gform_validation_container {
+  display: none!important;
+  position: absolute!important;
+  left: -9000px;
+}
+
+.gfield.hidden_label label {
+  display: none;
+}
+
+.grecaptcha-badge {
+  visibility: hidden;
+}
+</style>
+<script type="text/rocketlazyloadscript">
+    (function(d){
+		var s = d.createElement("script");
+		s.setAttribute("data-position", 3);
+		s.setAttribute("data-trigger", "triggerId")
+		s.setAttribute("data-account", "BgCjswZ64E");
+		s.setAttribute("src", "https://cdn.userway.org/widget.js");
+      (d.body || d.head).appendChild(s);
+    })(document)
+    </script>
+    </body>
+</html>
+<!-- This website is like a Rocket, isn't it? Performance optimized by WP Rocket. Learn more: https://wp-rocket.me - Debug: cached@1776685135 -->

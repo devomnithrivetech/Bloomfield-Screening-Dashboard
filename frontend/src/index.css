@@ -35,7 +35,7 @@
     --warning-foreground: 0 0% 100%;
 
     --border: 220 13% 91%;
-    --input: 220 13% 91%;
+    --input: 220 13% 78%;
     --ring: 224 78% 54%;
 
     --radius: 0.5rem;
@@ -104,7 +104,25 @@
   }
 
   body {
-    @apply bg-background text-foreground font-sans;
+    @apply bg-background text-foreground font-sans antialiased;
     font-family: 'Inter', sans-serif;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  /* Smoother focus ring across the app */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+}
+
+@layer components {
+  /* Card hover-lift used on clickable cards / rows */
+  .hover-lift {
+    @apply transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-card-hover;
+  }
+
+  /* Subtle press effect on buttons */
+  .press {
+    @apply active:scale-[0.98] transition-transform duration-75;
   }
 }

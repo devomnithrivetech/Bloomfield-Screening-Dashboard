@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Mail, X, Plus } from "lucide-react";
+import { ArrowLeft, Mail, X, Plus, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,9 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
 
 const SettingsPage = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [saving, setSaving] = useState(false);
   const [keywords, setKeywords] = useState([
     "assisted living", "memory care", "senior housing", "AL/MC", "bridge loan", "origination screener",
   ]);
@@ -36,6 +39,38 @@ const SettingsPage = () => {
   };
 
   const removeKeyword = (kw: string) => setKeywords(keywords.filter((k) => k !== kw));
+
+  const handleSave = () => {
+    setSaving(true);
+    // TODO: PUT /api/settings/screening + /api/settings/filters + /api/settings/notifications
+    setTimeout(() => {
+      setSaving(false);
+      toast({ title: "Settings saved", description: "Your preferences have been updated." });
+    }, 600);
+  };
+
+  const handleDisconnectGmail = () => {
+    toast({
+      title: "Gmail disconnected",
+      description: "Incoming deal emails will no longer sync until you reconnect.",
+      variant: "destructive",
+    });
+  };
+
+  const handleReauth = () => {
+    // TODO: GET /api/auth/google/start and redirect to consent screen
+    toast({
+      title: "Redirecting to Google...",
+      description: "You'll be asked to re-grant Gmail inbox access.",
+    });
+  };
+
+  const handleReplaceTemplate = () => {
+    toast({
+      title: "Upload template",
+      description: "Template replacement is coming in a future release.",
+    });
+  };
 
   return (
     <div className="min-h-[calc(100vh-3.5rem)] bg-background">
@@ -68,7 +103,12 @@ const SettingsPage = () => {
                 <span className="text-sm font-medium">Connected</span>
                 <span className="text-sm text-muted-foreground">sweiss@bloomfieldcapital.com</span>
               </div>
-              <Button variant="outline" size="sm" className="border-destructive text-destructive hover:bg-destructive/5 text-xs">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDisconnectGmail}
+                className="border-destructive text-destructive hover:bg-destructive/5 text-xs press"
+              >
                 Disconnect
               </Button>
             </div>
@@ -76,7 +116,7 @@ const SettingsPage = () => {
               <Badge variant="secondary" className="text-[11px] font-normal">Last synced: 2 minutes ago</Badge>
               <Badge variant="secondary" className="text-[11px] font-normal">Inbox access: Enabled</Badge>
             </div>
-            <Button variant="outline" size="sm" className="text-xs">
+            <Button variant="outline" size="sm" onClick={handleReauth} className="text-xs press">
               Re-authenticate
             </Button>
           </CardContent>
@@ -149,7 +189,7 @@ const SettingsPage = () => {
                 <Label className="text-sm">Screener Template</Label>
                 <p className="text-xs text-muted-foreground mt-0.5">Bloomfield_Screener_Template.xlsx</p>
               </div>
-              <Button variant="outline" size="sm" className="text-xs">Replace</Button>
+              <Button variant="outline" size="sm" onClick={handleReplaceTemplate} className="text-xs press">Replace</Button>
             </div>
 
             <div className="border-t border-border pt-4">
@@ -182,8 +222,13 @@ const SettingsPage = () => {
             </div>
 
             <div className="flex justify-end pt-2">
-              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                Save Settings
+              <Button
+                onClick={handleSave}
+                disabled={saving}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground press gap-2"
+              >
+                {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+                {saving ? "Saving..." : "Save Settings"}
               </Button>
             </div>
           </CardContent>

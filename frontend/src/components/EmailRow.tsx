@@ -26,9 +26,10 @@ const EmailRow = ({ email, isSelected, onClick }: EmailRowProps) => {
     <button
       onClick={onClick}
       className={cn(
-        "w-full text-left px-4 py-3.5 border-b border-secondary transition-colors",
-        "hover:bg-accent/5",
-        isSelected && "border-l-[3px] border-l-accent bg-accent/5"
+        "w-full text-left px-4 py-3.5 border-b border-secondary transition-all duration-150",
+        "hover:bg-accent/5 hover:pl-[17px]",
+        "focus-visible:outline-none focus-visible:bg-accent/5 focus-visible:pl-[17px]",
+        isSelected && "border-l-[3px] border-l-accent bg-accent/5 pl-[17px]"
       )}
     >
       {/* Line 1: Sender + Date */}

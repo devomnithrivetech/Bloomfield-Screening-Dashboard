@@ -1,11 +1,12 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { useState } from "react";
-import { ArrowLeft, Check, Download, Mail, AlertTriangle, CheckCircle2, Loader2, ArrowRight } from "lucide-react";
+import { ArrowLeft, Check, Download, Mail, AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 const pipelineStages = [
   { label: "Email Received", timestamp: "Mar 13, 2026  4:28 PM", state: "completed" },
@@ -36,7 +37,37 @@ const investmentRisks = "Operator track record: Paragon Senior Living founded Ap
 const DealDetail = () => {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { toast } = useToast();
   const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [sending, setSending] = useState(false);
+
+  void id;
+
+  const handleDownload = () => {
+    setDownloading(true);
+    // TODO: GET /api/deals/:id/screener — stream the .xlsx from Supabase Storage
+    setTimeout(() => {
+      setDownloading(false);
+      toast({
+        title: "Screener downloaded",
+        description: "Bloomfield_Screener_Providence_Place.xlsx saved to your Downloads folder.",
+      });
+    }, 900);
+  };
+
+  const handleSendEmail = () => {
+    setSending(true);
+    // TODO: POST /api/deals/:id/send-email
+    setTimeout(() => {
+      setSending(false);
+      setEmailModalOpen(false);
+      toast({
+        title: "Email sent",
+        description: "Screening email delivered to the Investment Committee.",
+      });
+    }, 900);
+  };
 
   return (
     <div className="min-h-[calc(100vh-3.5rem)] bg-background">
@@ -179,13 +210,17 @@ const DealDetail = () => {
         {/* Section 5: Actions */}
         <Card>
           <CardContent className="p-6 flex items-center gap-3">
-            <Button className="bg-success hover:bg-success/90 text-success-foreground gap-2">
-              <Download className="h-4 w-4" />
-              Download Screener (XLSX)
+            <Button
+              onClick={handleDownload}
+              disabled={downloading}
+              className="bg-success hover:bg-success/90 text-success-foreground gap-2 press"
+            >
+              {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              {downloading ? "Preparing..." : "Download Screener (XLSX)"}
             </Button>
             <Button
               variant="outline"
-              className="border-primary text-primary hover:bg-primary/5 gap-2"
+              className="border-primary text-primary hover:bg-primary/5 gap-2 press"
               onClick={() => setEmailModalOpen(true)}
             >
               <Mail className="h-4 w-4" />
@@ -247,11 +282,16 @@ const DealDetail = () => {
             <p className="text-muted-foreground">— Shana</p>
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setEmailModalOpen(false)}>
+            <Button variant="outline" onClick={() => setEmailModalOpen(false)} disabled={sending}>
               Close
             </Button>
-            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
-              Send Email
+            <Button
+              onClick={handleSendEmail}
+              disabled={sending}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground press gap-2"
+            >
+              {sending && <Loader2 className="h-4 w-4 animate-spin" />}
+              {sending ? "Sending..." : "Send Email"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -18,6 +18,7 @@ Origination Screener (`.xlsx`) plus a draft screening email for review.
 
 - [frontend/README.md](frontend/README.md) — dashboard setup, scripts, env
 - [backend/README.md](backend/README.md) — FastAPI setup, agent pipeline, env
+- [SUPABASE_SETUP.md](SUPABASE_SETUP.md) — Supabase configuration walkthrough (env vars, auth, SQL, storage)
 
 ## Architecture at a glance
 
