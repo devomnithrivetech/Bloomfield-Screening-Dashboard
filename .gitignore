@@ -5,6 +5,7 @@
 !.vscode/extensions.json
 .idea/
 *.log
+docs/
 
 # OS
 Thumbs.db
