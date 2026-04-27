@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Paperclip, Table2, Download, CheckCircle2, Loader2, ArrowRight, FileText } from "lucide-react";
+import { emailsApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -109,10 +110,21 @@ const EmailDetail = ({ email, onSendForProcessing }: EmailDetailProps) => {
                     <span className="text-sm font-medium truncate">{att.filename}</span>
                     <span className="text-xs text-muted-foreground">{att.size}</span>
                   </div>
-                  <button className="ml-auto text-xs text-accent hover:underline flex items-center gap-1 flex-shrink-0">
-                    <Download className="h-3 w-3" />
-                    Download
-                  </button>
+                  {att.id ? (
+                    <a
+                      href={emailsApi.attachmentUrl(email.id, att.id, att.filename)}
+                      download={att.filename}
+                      className="ml-auto text-xs text-accent hover:underline flex items-center gap-1 flex-shrink-0"
+                    >
+                      <Download className="h-3 w-3" />
+                      Download
+                    </a>
+                  ) : (
+                    <span className="ml-auto text-xs text-muted-foreground flex items-center gap-1 flex-shrink-0">
+                      <Download className="h-3 w-3" />
+                      Download
+                    </span>
+                  )}
                 </div>
               ))}
             </div>

@@ -4,9 +4,11 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 
 from app.core.security import get_current_user
+from app.core.token_store import load_token
 from app.schemas.settings import (
     AIScreeningSettings,
     EmailFilterRule,
+    GmailIntegrationStatus,
     NotificationSettings,
     UserSettings,
 )
@@ -16,10 +18,14 @@ router = APIRouter()
 
 @router.get("", response_model=UserSettings)
 async def get_settings(user: dict = Depends(get_current_user)) -> UserSettings:
-    # TODO: load from Supabase `user_settings` table
-    _ = user
+    token_data = await load_token(user["id"])
+    gmail = GmailIntegrationStatus(
+        connected=bool(token_data),
+        email=token_data.get("email") if token_data else None,
+        last_synced_at=str(token_data.get("updated_at")) if token_data else None,
+    )
     return UserSettings(
-        gmail={"connected": False},
+        gmail=gmail,
         filters=[],
         screening=AIScreeningSettings(
             model="claude-opus-4-7",

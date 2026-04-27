@@ -1,11 +1,14 @@
-import { useState } from "react";
-import { Search, Inbox, SearchX } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Search, Inbox, SearchX, Loader2, Mail, PlusCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 import EmailRow from "@/components/EmailRow";
 import EmailDetail from "@/components/EmailDetail";
 import { mockEmails, type Email } from "@/data/mockEmails";
+import { emailsApi, gmailApi, type ApiEmailDetail } from "@/lib/api";
 
 const stats = [
   { label: "Deals This Week", value: "8", subtext: "emails received" },
@@ -14,10 +17,159 @@ const stats = [
   { label: "Avg. Loan Size", value: "$14.2M", subtext: "across active deals" },
 ];
 
+// ---------------------------------------------------------------------------
+// Transform Gmail API response → the Email shape used by components
+// ---------------------------------------------------------------------------
+function formatSize(bytes: number | null): string {
+  if (!bytes) return "–";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+const STATUS_MAP = {
+  unprocessed: "Unprocessed",
+  processing: "Processing",
+  processed: "Processed",
+} as const;
+
+function apiToEmail(api: ApiEmailDetail): Email {
+  const dt = new Date(api.received_at);
+  const date = dt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  const time = dt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+
+  // Prefer plain text; strip minimal HTML tags as fallback
+  const body =
+    api.body_text ||
+    (api.body_html
+      ? api.body_html.replace(/<[^>]+>/g, " ").replace(/\s{2,}/g, "\n").trim()
+      : api.preview);
+
+  return {
+    id: api.id,
+    sender: api.sender,
+    senderEmail: api.sender_email || "",
+    subject: api.subject,
+    date,
+    time,
+    body,
+    snippet: api.preview,
+    attachments: api.attachments.map((a) => ({
+      id: a.id,
+      filename: a.filename,
+      type: a.type,
+      size: formatSize(a.size_bytes),
+    })),
+    status: STATUS_MAP[api.status] ?? "Unprocessed",
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
 const Dashboard = () => {
-  const [emails, setEmails] = useState<Email[]>(mockEmails);
-  const [selectedId, setSelectedId] = useState<string | null>(mockEmails[0]?.id || null);
+  const navigate = useNavigate();
+  const [emails, setEmails] = useState<Email[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedEmailFull, setSelectedEmailFull] = useState<Email | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [gmailConnected, setGmailConnected] = useState<boolean | null>(null);
+  const [nextPageToken, setNextPageToken] = useState<string | null>(null);
+  // Body cache keyed by email ID — populated by background batch pre-fetch
+  const emailBodyCache = useRef(new Map<string, Email>());
+
+  // Pre-fetch full bodies for a list of emails using a single batch request.
+  // Results go into the cache so subsequent clicks are instant.
+  const prefetchBodies = useCallback(async (emailList: Email[]) => {
+    const ids = emailList
+      .filter((e) => !emailBodyCache.current.has(e.id))
+      .map((e) => e.id);
+    if (!ids.length) return;
+    try {
+      const details = await emailsApi.batchGet(ids);
+      details.forEach((d) => emailBodyCache.current.set(d.id, apiToEmail(d)));
+    } catch {
+      // On-demand fetch handles any misses when user selects the email
+    }
+  }, []);
+
+  const fetchEmails = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [statusRes, listRes] = await Promise.all([
+        gmailApi.getStatus(),
+        emailsApi.list(),
+      ]);
+      setGmailConnected(statusRes.connected);
+      if (listRes.emails.length > 0) {
+        const converted = listRes.emails.map(apiToEmail);
+        setEmails(converted);
+        setNextPageToken(listRes.next_page_token);
+        setSelectedId(converted[0]?.id ?? null);
+        // Kick off background pre-fetch — don't await so inbox renders immediately
+        prefetchBodies(converted);
+      } else {
+        setEmails(mockEmails);
+        setSelectedId(mockEmails[0]?.id ?? null);
+      }
+    } catch {
+      setGmailConnected(false);
+      setEmails(mockEmails);
+      setSelectedId(mockEmails[0]?.id ?? null);
+    } finally {
+      setLoading(false);
+    }
+  }, [prefetchBodies]);
+
+  const loadMoreEmails = useCallback(async () => {
+    if (!nextPageToken || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const listRes = await emailsApi.list(nextPageToken);
+      const converted = listRes.emails.map(apiToEmail);
+      setEmails((prev) => [...prev, ...converted]);
+      setNextPageToken(listRes.next_page_token);
+      prefetchBodies(converted);
+    } catch {
+      // Button stays visible — user can retry
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [nextPageToken, loadingMore, prefetchBodies]);
+
+  useEffect(() => {
+    fetchEmails();
+  }, [fetchEmails]);
+
+  // When selected email changes, serve from cache (instant) or fetch on demand.
+  useEffect(() => {
+    if (!selectedId) {
+      setSelectedEmailFull(null);
+      return;
+    }
+    if (emailBodyCache.current.has(selectedId)) {
+      setSelectedEmailFull(emailBodyCache.current.get(selectedId)!);
+      return;
+    }
+    let cancelled = false;
+    emailsApi.get(selectedId)
+      .then((detail) => {
+        if (!cancelled) {
+          const email = apiToEmail(detail);
+          emailBodyCache.current.set(selectedId, email);
+          setSelectedEmailFull(email);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setSelectedEmailFull(null);
+      });
+    return () => { cancelled = true; };
+  }, [selectedId]);
+
+  const selectedEmail = emails.find((e) => e.id === selectedId) || null;
+  const rightPanelEmail = selectedEmailFull ?? selectedEmail;
 
   const filteredEmails = emails.filter((email) => {
     if (!searchQuery) return true;
@@ -28,8 +180,6 @@ const Dashboard = () => {
       email.snippet.toLowerCase().includes(q)
     );
   });
-
-  const selectedEmail = emails.find((e) => e.id === selectedId) || null;
 
   const handleSendForProcessing = (id: string) => {
     setEmails((prev) =>
@@ -80,18 +230,50 @@ const Dashboard = () => {
             <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5">
               {filteredEmails.length}
             </Badge>
+            {gmailConnected === true && (
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 ml-auto bg-success/10 text-success">
+                Gmail
+              </Badge>
+            )}
           </div>
 
           <ScrollArea className="flex-1">
-            {filteredEmails.length > 0 ? (
-              filteredEmails.map((email) => (
-                <EmailRow
-                  key={email.id}
-                  email={email}
-                  isSelected={selectedId === email.id}
-                  onClick={() => setSelectedId(email.id)}
-                />
-              ))
+            {loading ? (
+              <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
+                <Loader2 className="h-5 w-5 animate-spin opacity-50" />
+                <span className="text-sm">Loading inbox…</span>
+              </div>
+            ) : filteredEmails.length > 0 ? (
+              <>
+                {filteredEmails.map((email) => (
+                  <EmailRow
+                    key={email.id}
+                    email={email}
+                    isSelected={selectedId === email.id}
+                    onClick={() => setSelectedId(email.id)}
+                  />
+                ))}
+                {nextPageToken && !searchQuery && (
+                  <div className="px-3 py-3 border-t border-border">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full text-muted-foreground hover:text-foreground gap-1.5"
+                      onClick={loadMoreEmails}
+                      disabled={loadingMore}
+                    >
+                      {loadingMore ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <PlusCircle className="h-4 w-4" />
+                      )}
+                      <span className="text-xs">
+                        {loadingMore ? "Loading…" : "Load 20 more"}
+                      </span>
+                    </Button>
+                  </div>
+                )}
+              </>
             ) : (
               <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
                 <SearchX className="h-8 w-8 opacity-40" />
@@ -103,11 +285,30 @@ const Dashboard = () => {
 
         {/* Right Panel */}
         <div className="w-[62%] bg-card flex flex-col">
-          {selectedEmail ? (
+          {loading ? (
+            <div className="flex-1 flex items-center justify-center text-muted-foreground">
+              <Loader2 className="h-8 w-8 animate-spin opacity-30" />
+            </div>
+          ) : rightPanelEmail ? (
             <EmailDetail
-              email={selectedEmail}
+              email={rightPanelEmail}
               onSendForProcessing={handleSendForProcessing}
             />
+          ) : gmailConnected === false ? (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="flex flex-col items-center gap-4 text-muted-foreground max-w-xs text-center">
+                <Mail className="h-12 w-12 opacity-30" />
+                <p className="text-sm">Connect your Gmail to see deal emails in your inbox</p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => navigate("/settings")}
+                  className="text-xs"
+                >
+                  Go to Settings
+                </Button>
+              </div>
+            </div>
           ) : (
             <div className="flex-1 flex items-center justify-center">
               <div className="flex flex-col items-center gap-3 text-muted-foreground">

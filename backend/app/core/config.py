@@ -40,6 +40,10 @@ class Settings(BaseSettings):
     google_client_secret: str = ""
     google_oauth_redirect_uri: str = "http://localhost:8000/api/auth/google/callback"
 
+    @property
+    def google_oauth_redirect_uri_clean(self) -> str:
+        return self.google_oauth_redirect_uri.strip()
+
     screener_template_path: str = "templates/bloomfield_origination_screener.xlsx"
 
     @property

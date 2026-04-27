@@ -1,4 +1,4 @@
-"""Pydantic schemas for email inbox endpoints (mirrors frontend mockEmails shape)."""
+"""Pydantic schemas for email inbox endpoints."""
 from __future__ import annotations
 
 from datetime import datetime
@@ -29,6 +29,7 @@ class Attachment(BaseModel):
 class EmailSummary(BaseModel):
     id: str
     sender: str
+    sender_email: str | None = None
     subject: str
     preview: str
     received_at: datetime
@@ -57,3 +58,12 @@ class ProcessEmailRequest(BaseModel):
 class ProcessEmailResponse(BaseModel):
     deal_id: str
     status: EmailStatus
+
+
+class EmailListResponse(BaseModel):
+    emails: list[EmailDetail]
+    next_page_token: str | None = None
+
+
+class BatchEmailRequest(BaseModel):
+    ids: list[str]

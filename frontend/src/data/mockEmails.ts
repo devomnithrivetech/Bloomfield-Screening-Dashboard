@@ -1,6 +1,7 @@
 export type EmailStatus = "Unprocessed" | "Processing" | "Processed";
 
 export interface EmailAttachment {
+  id?: string;   // Gmail attachment ID — present on real emails, absent on mock data
   filename: string;
   type: "excel" | "pdf" | "other";
   size: string;

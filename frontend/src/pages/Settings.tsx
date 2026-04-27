@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Mail, X, Plus, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { ArrowLeft, Mail, X, Plus, Loader2, ExternalLink } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,11 +9,19 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { gmailApi, type GmailStatus } from "@/lib/api";
 
 const SettingsPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
+
   const [saving, setSaving] = useState(false);
+  const [gmailStatus, setGmailStatus] = useState<GmailStatus | null>(null);
+  const [gmailLoading, setGmailLoading] = useState(true);
+  const [connectingGmail, setConnectingGmail] = useState(false);
+  const [disconnectingGmail, setDisconnectingGmail] = useState(false);
+
   const [keywords, setKeywords] = useState([
     "assisted living", "memory care", "senior housing", "AL/MC", "bridge loan", "origination screener",
   ]);
@@ -30,6 +38,58 @@ const SettingsPage = () => {
     defaultCapRate: "9",
   });
 
+  // Load Gmail status on mount
+  useEffect(() => {
+    gmailApi.getStatus()
+      .then((s) => setGmailStatus(s))
+      .catch(() => setGmailStatus({ connected: false, email: null, last_synced_at: null }))
+      .finally(() => setGmailLoading(false));
+  }, []);
+
+  // Handle redirect back from Google OAuth
+  useEffect(() => {
+    if (searchParams.get("gmail") === "connected") {
+      toast({ title: "Gmail connected", description: "Your inbox is now linked." });
+      gmailApi.getStatus()
+        .then(setGmailStatus)
+        .catch(() => {});
+      // Clear the query param without re-render loop
+      window.history.replaceState({}, "", "/settings");
+    }
+  }, [searchParams, toast]);
+
+  const handleConnectGmail = async () => {
+    setConnectingGmail(true);
+    try {
+      const { url } = await gmailApi.getOAuthUrl();
+      window.location.href = url;
+    } catch {
+      toast({ title: "Error", description: "Could not start Gmail authorisation.", variant: "destructive" });
+      setConnectingGmail(false);
+    }
+  };
+
+  const handleDisconnectGmail = async () => {
+    setDisconnectingGmail(true);
+    try {
+      await gmailApi.disconnect();
+      setGmailStatus({ connected: false, email: null, last_synced_at: null });
+      toast({
+        title: "Gmail disconnected",
+        description: "Incoming deal emails will no longer sync until you reconnect.",
+        variant: "destructive",
+      });
+    } catch {
+      toast({ title: "Error", description: "Failed to disconnect Gmail.", variant: "destructive" });
+    } finally {
+      setDisconnectingGmail(false);
+    }
+  };
+
+  const handleReauth = async () => {
+    await handleConnectGmail();
+  };
+
   const addKeyword = () => {
     const trimmed = newKeyword.trim();
     if (trimmed && !keywords.includes(trimmed)) {
@@ -42,34 +102,24 @@ const SettingsPage = () => {
 
   const handleSave = () => {
     setSaving(true);
-    // TODO: PUT /api/settings/screening + /api/settings/filters + /api/settings/notifications
     setTimeout(() => {
       setSaving(false);
       toast({ title: "Settings saved", description: "Your preferences have been updated." });
     }, 600);
   };
 
-  const handleDisconnectGmail = () => {
-    toast({
-      title: "Gmail disconnected",
-      description: "Incoming deal emails will no longer sync until you reconnect.",
-      variant: "destructive",
-    });
-  };
-
-  const handleReauth = () => {
-    // TODO: GET /api/auth/google/start and redirect to consent screen
-    toast({
-      title: "Redirecting to Google...",
-      description: "You'll be asked to re-grant Gmail inbox access.",
-    });
-  };
-
   const handleReplaceTemplate = () => {
-    toast({
-      title: "Upload template",
-      description: "Template replacement is coming in a future release.",
-    });
+    toast({ title: "Upload template", description: "Template replacement is coming in a future release." });
+  };
+
+  const formatLastSynced = (ts: string | null) => {
+    if (!ts) return null;
+    try {
+      const d = new Date(ts);
+      return d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+    } catch {
+      return ts;
+    }
   };
 
   return (
@@ -97,28 +147,72 @@ const SettingsPage = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-success" />
-                <span className="text-sm font-medium">Connected</span>
-                <span className="text-sm text-muted-foreground">sweiss@bloomfieldcapital.com</span>
+            {gmailLoading ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Checking connection…
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleDisconnectGmail}
-                className="border-destructive text-destructive hover:bg-destructive/5 text-xs press"
-              >
-                Disconnect
-              </Button>
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="secondary" className="text-[11px] font-normal">Last synced: 2 minutes ago</Badge>
-              <Badge variant="secondary" className="text-[11px] font-normal">Inbox access: Enabled</Badge>
-            </div>
-            <Button variant="outline" size="sm" onClick={handleReauth} className="text-xs press">
-              Re-authenticate
-            </Button>
+            ) : gmailStatus?.connected ? (
+              <>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full bg-success" />
+                    <span className="text-sm font-medium">Connected</span>
+                    {gmailStatus.email && (
+                      <span className="text-sm text-muted-foreground">{gmailStatus.email}</span>
+                    )}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDisconnectGmail}
+                    disabled={disconnectingGmail}
+                    className="border-destructive text-destructive hover:bg-destructive/5 text-xs press"
+                  >
+                    {disconnectingGmail ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Disconnect"}
+                  </Button>
+                </div>
+                <div className="flex items-center gap-2">
+                  {gmailStatus.last_synced_at && (
+                    <Badge variant="secondary" className="text-[11px] font-normal">
+                      Last synced: {formatLastSynced(gmailStatus.last_synced_at)}
+                    </Badge>
+                  )}
+                  <Badge variant="secondary" className="text-[11px] font-normal">Inbox access: Enabled</Badge>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleReauth} className="text-xs press gap-1">
+                  <ExternalLink className="h-3 w-3" />
+                  Re-authenticate
+                </Button>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/40" />
+                  <span className="text-sm text-muted-foreground">Not connected</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Connect your Gmail inbox so deal emails are automatically pulled into the dashboard.
+                </p>
+                <Button
+                  onClick={handleConnectGmail}
+                  disabled={connectingGmail}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 text-sm"
+                >
+                  {connectingGmail ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Redirecting…
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="h-4 w-4" />
+                      Connect Gmail
+                    </>
+                  )}
+                </Button>
+              </>
+            )}
           </CardContent>
         </Card>
 

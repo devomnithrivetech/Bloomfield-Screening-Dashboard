@@ -46,3 +46,6 @@ htmlcov/
 logs/
 templates/*.xlsx
 !templates/.gitkeep
+
+# OAuth token cache (contains sensitive refresh tokens)
+.oauth_tokens.json
