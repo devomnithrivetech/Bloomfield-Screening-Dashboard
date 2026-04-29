@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import StreamingResponse
+from fastapi.responses import RedirectResponse
 
 from app.core.security import get_current_user
 from app.schemas.deal import DealDetail, DealListResponse, KPIStats
@@ -30,14 +30,29 @@ async def get_deal(deal_id: str, user: dict = Depends(get_current_user)) -> Deal
 
 
 @router.get("/{deal_id}/screener")
-async def download_screener(deal_id: str, user: dict = Depends(get_current_user)) -> StreamingResponse:
-    # TODO: stream the .xlsx from Supabase Storage
-    _ = (deal_id, user)
-    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED)
+async def download_screener(
+    deal_id: str,
+    user: dict = Depends(get_current_user),
+) -> RedirectResponse:
+    """Redirect to a 1-hour pre-signed S3 URL for the generated screener Excel."""
+    deal = await deal_service.get_deal(user["id"], deal_id)
+    if deal is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="deal not found")
+    if not deal.screener_s3_key:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="screener not yet generated for this deal",
+        )
+    from app.agents.demo import get_screener_presigned_url
+    url = await get_screener_presigned_url(deal.screener_s3_key)
+    return RedirectResponse(url=url, status_code=302)
 
 
 @router.post("/{deal_id}/send-email")
-async def send_screening_email(deal_id: str, user: dict = Depends(get_current_user)) -> dict:
-    # TODO: send the composed screening email via Gmail API with screener attached
+async def send_screening_email(
+    deal_id: str,
+    user: dict = Depends(get_current_user),
+) -> dict:
+    # TODO: compose MIME message and send via Gmail API with screener attached
     _ = (deal_id, user)
     return {"status": "queued"}

@@ -9,6 +9,7 @@ import EmailRow from "@/components/EmailRow";
 import EmailDetail from "@/components/EmailDetail";
 import { mockEmails, type Email } from "@/data/mockEmails";
 import { emailsApi, gmailApi, type ApiEmailDetail } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 
 const stats = [
   { label: "Deals This Week", value: "8", subtext: "emails received" },
@@ -38,12 +39,7 @@ function apiToEmail(api: ApiEmailDetail): Email {
   const date = dt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
   const time = dt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 
-  // Prefer plain text; strip minimal HTML tags as fallback
-  const body =
-    api.body_text ||
-    (api.body_html
-      ? api.body_html.replace(/<[^>]+>/g, " ").replace(/\s{2,}/g, "\n").trim()
-      : api.preview);
+  const body = api.body_text || api.preview;
 
   return {
     id: api.id,
@@ -53,6 +49,7 @@ function apiToEmail(api: ApiEmailDetail): Email {
     date,
     time,
     body,
+    bodyHtml: api.body_html ?? undefined,
     snippet: api.preview,
     attachments: api.attachments.map((a) => ({
       id: a.id,
@@ -61,6 +58,7 @@ function apiToEmail(api: ApiEmailDetail): Email {
       size: formatSize(a.size_bytes),
     })),
     status: STATUS_MAP[api.status] ?? "Unprocessed",
+    deal_id: api.deal_id ?? undefined,
   };
 }
 
@@ -69,6 +67,7 @@ function apiToEmail(api: ApiEmailDetail): Email {
 // ---------------------------------------------------------------------------
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [emails, setEmails] = useState<Email[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedEmailFull, setSelectedEmailFull] = useState<Email | null>(null);
@@ -169,7 +168,71 @@ const Dashboard = () => {
   }, [selectedId]);
 
   const selectedEmail = emails.find((e) => e.id === selectedId) || null;
-  const rightPanelEmail = selectedEmailFull ?? selectedEmail;
+  // selectedEmailFull has the full body but may be stale after optimistic status updates.
+  // Merge volatile fields (status, deal_id) from the live emails list so Processing→Processed
+  // transitions always show in the right panel without re-fetching the body.
+  const baseEmail = selectedEmailFull ?? selectedEmail;
+  const rightPanelEmail = baseEmail && selectedEmail
+    ? { ...baseEmail, status: selectedEmail.status, deal_id: selectedEmail.deal_id }
+    : baseEmail;
+
+  // Poll every 5 s while any email is in "Processing" state so the dashboard
+  // auto-updates when the backend pipeline completes — even if the original
+  // HTTP request was started in a now-unmounted component instance.
+  //
+  // STATUS_RANK enforces a one-way ratchet: polling can only advance an email's
+  // status (Unprocessed → Processing → Processed), never revert it.  Without
+  // this guard, a transient Supabase miss (e.g. the write hasn't landed yet)
+  // would overwrite the optimistic "Processing" state with "Unprocessed",
+  // causing the "Send for Processing" button to re-appear mid-flight.
+  const STATUS_RANK: Record<string, number> = {
+    Unprocessed: 0,
+    Processing: 1,
+    Processed: 2,
+  };
+  const hasProcessing = emails.some((e) => e.status === "Processing");
+  useEffect(() => {
+    if (!hasProcessing) return;
+    const poll = async () => {
+      try {
+        const listRes = await emailsApi.list();
+        const updated = listRes.emails.map(apiToEmail);
+        setEmails((prev) => {
+          let changed = false;
+          const next = prev.map((email) => {
+            const u = updated.find((u) => u.id === email.id);
+            if (!u) return email;
+            const currentRank = STATUS_RANK[email.status] ?? 0;
+            const updatedRank = STATUS_RANK[u.status] ?? 0;
+            // Only apply if status advances OR deal_id is newly available
+            const statusAdvances = updatedRank > currentRank;
+            const dealIdAppears = u.deal_id && u.deal_id !== email.deal_id;
+            if (statusAdvances || dealIdAppears) {
+              changed = true;
+              // Keep body cache in sync so the right panel reflects the new status
+              if (emailBodyCache.current.has(email.id)) {
+                const cached = emailBodyCache.current.get(email.id)!;
+                emailBodyCache.current.set(email.id, {
+                  ...cached,
+                  status: statusAdvances ? u.status : email.status,
+                  deal_id: u.deal_id ?? email.deal_id,
+                });
+              }
+              return {
+                ...email,
+                status: statusAdvances ? u.status : email.status,
+                deal_id: u.deal_id ?? email.deal_id,
+              };
+            }
+            return email;
+          });
+          return changed ? next : prev;
+        });
+      } catch { /* ignore transient poll errors */ }
+    };
+    const timer = setInterval(poll, 5000);
+    return () => clearInterval(timer);
+  }, [hasProcessing]);
 
   const filteredEmails = emails.filter((email) => {
     if (!searchQuery) return true;
@@ -181,10 +244,32 @@ const Dashboard = () => {
     );
   });
 
-  const handleSendForProcessing = (id: string) => {
+  const handleSendForProcessing = async (id: string) => {
+    // Optimistic update — show "Processing" immediately
     setEmails((prev) =>
       prev.map((e) => (e.id === id ? { ...e, status: "Processing" as const } : e))
     );
+    try {
+      const result = await emailsApi.process(id);
+      // Mark as Processed and store the deal_id so navigation works
+      setEmails((prev) =>
+        prev.map((e) =>
+          e.id === id
+            ? { ...e, status: "Processed" as const, deal_id: result.deal_id }
+            : e
+        )
+      );
+    } catch {
+      // Revert on failure
+      setEmails((prev) =>
+        prev.map((e) => (e.id === id ? { ...e, status: "Unprocessed" as const } : e))
+      );
+      toast({
+        title: "Processing failed",
+        description: "Could not process this email. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (

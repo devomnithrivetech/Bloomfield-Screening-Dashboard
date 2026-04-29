@@ -25,6 +25,21 @@ import {
 import type { Email } from "@/data/mockEmails";
 import { cn } from "@/lib/utils";
 
+function prepareHtmlForIframe(html: string): string {
+  const withTargets = html.replace(/<a\s/gi, '<a target="_blank" rel="noopener noreferrer" ');
+  const script = [
+    '<script>',
+    'document.addEventListener("click", function(e) {',
+    '  var a = e.target ? e.target.closest("a") : null;',
+    '  if (!a || !a.href) return;',
+    '  e.preventDefault();',
+    '  window.parent.postMessage({ type: "iframe-link-click", url: a.href }, "*");',
+    '});',
+    '<' + '/script>',
+  ].join('\n');
+  return withTargets + script;
+}
+
 interface EmailDetailProps {
   email: Email;
   onSendForProcessing: (id: string) => void;
@@ -48,12 +63,24 @@ const EmailDetail = ({ email, onSendForProcessing }: EmailDetailProps) => {
   const [showConfirm, setShowConfirm] = useState(false);
   const [summarizeState, setSummarizeState] = useState<"idle" | "loading" | "ready">("idle");
   const [showSummary, setShowSummary] = useState(false);
+  const [pendingUrl, setPendingUrl] = useState<string | null>(null);
 
   // Reset summarize state when email changes
   useEffect(() => {
     setSummarizeState("idle");
     setShowSummary(false);
   }, [email.id]);
+
+  // Listen for link-click messages posted by the sandboxed iframe
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type === "iframe-link-click" && typeof e.data.url === "string") {
+        setPendingUrl(e.data.url);
+      }
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, []);
 
   const handleSummarize = () => {
     if (summarizeState === "idle") {
@@ -82,9 +109,19 @@ const EmailDetail = ({ email, onSendForProcessing }: EmailDetailProps) => {
 
       {/* Section 2: Body + Attachments */}
       <ScrollArea className="flex-1 px-6 py-5">
-        <div className="whitespace-pre-line text-sm text-foreground leading-relaxed">
-          {email.body}
-        </div>
+        {email.bodyHtml ? (
+          <iframe
+            srcDoc={prepareHtmlForIframe(email.bodyHtml)}
+            sandbox="allow-same-origin allow-scripts allow-popups"
+            width="100%"
+            style={{ height: "600px", border: "none" }}
+            title="Email content"
+          />
+        ) : (
+          <div className="whitespace-pre-line text-sm text-foreground leading-relaxed">
+            {email.body}
+          </div>
+        )}
 
         {email.attachments.length > 0 && (
           <div className="mt-6 space-y-2">
@@ -195,17 +232,9 @@ const EmailDetail = ({ email, onSendForProcessing }: EmailDetailProps) => {
                 </>
               )}
             </Button>
-            <Button disabled variant="outline" size="sm" className="gap-2">
+            <Button disabled variant="outline" size="sm" className="gap-2 ml-auto">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Processing...
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => navigate(`/deal/${email.id}`)}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground gap-1 ml-auto"
-            >
-              More Details
-              <ArrowRight className="h-3.5 w-3.5" />
+              AI analysis in progress…
             </Button>
           </div>
         )}
@@ -242,7 +271,7 @@ const EmailDetail = ({ email, onSendForProcessing }: EmailDetailProps) => {
             </Badge>
             <Button
               size="sm"
-              onClick={() => navigate(`/deal/${email.id}`)}
+              onClick={() => navigate(`/deal/${email.deal_id ?? email.id}`)}
               className="bg-primary hover:bg-primary/90 text-primary-foreground gap-1 ml-auto"
             >
               Screening Results
@@ -269,6 +298,31 @@ const EmailDetail = ({ email, onSendForProcessing }: EmailDetailProps) => {
               className="bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               Confirm & Process
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* External Link Confirmation Dialog */}
+      <AlertDialog open={!!pendingUrl} onOpenChange={(open) => { if (!open) setPendingUrl(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Open External Link?</AlertDialogTitle>
+            <AlertDialogDescription className="break-all">
+              You are about to leave the app and visit an external website:
+              <span className="block mt-2 font-medium text-foreground">{pendingUrl}</span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingUrl(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (pendingUrl) window.open(pendingUrl, "_blank", "noopener,noreferrer");
+                setPendingUrl(null);
+              }}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
+            >
+              Open Link
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

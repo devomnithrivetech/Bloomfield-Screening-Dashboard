@@ -59,6 +59,11 @@ export interface ApiEmailListResponse {
   next_page_token: string | null;
 }
 
+export interface ProcessEmailResponse {
+  deal_id: string;
+  status: ApiEmailStatus;
+}
+
 export const emailsApi = {
   list: (pageToken?: string) => {
     const url = pageToken
@@ -72,8 +77,52 @@ export const emailsApi = {
       method: "POST",
       body: JSON.stringify({ ids }),
     }),
+  process: (emailId: string) =>
+    apiFetch<ProcessEmailResponse>(`/api/emails/${emailId}/process`, { method: "POST" }),
   attachmentUrl: (emailId: string, attachmentId: string, filename: string) =>
     `${API_BASE}/api/emails/${emailId}/attachments/${attachmentId}?filename=${encodeURIComponent(filename)}`,
+};
+
+// ---------------------------------------------------------------------------
+// Deals
+// ---------------------------------------------------------------------------
+export interface ApiKeyMetric {
+  label: string;
+  value: string;
+  flag: "ok" | "warn";
+}
+
+export interface ApiPipelineStage {
+  stage: string;
+  status: "pending" | "in_progress" | "completed" | "failed";
+  started_at: string | null;
+  finished_at: string | null;
+  detail: string | null;
+}
+
+export interface ApiDealDetail {
+  id: string;
+  property_name: string;
+  address: string | null;
+  county: string | null;
+  msa: string | null;
+  asset_class: string | null;
+  recommendation: "proceed" | "negotiate" | "pass" | null;
+  confidence: number | null;
+  risk_rating: "low" | "moderate" | "moderate_high" | "high" | null;
+  created_at: string;
+  key_metrics: ApiKeyMetric[];
+  highlights: { title: string; detail: string }[];
+  risks: { title: string; detail: string; severity: string }[];
+  pipeline: ApiPipelineStage[];
+  screener_s3_key: string | null;
+  screening_email_draft: string | null;
+  property_info: Record<string, unknown>;
+}
+
+export const dealsApi = {
+  get: (dealId: string) => apiFetch<ApiDealDetail>(`/api/deals/${dealId}`),
+  screenerUrl: (dealId: string) => `${API_BASE}/api/deals/${dealId}/screener`,
 };
 
 // ---------------------------------------------------------------------------

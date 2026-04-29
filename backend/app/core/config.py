@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     api_port: int = 8000
     cors_origins: str = "http://localhost:8080"
 
-    engagement_option: EngagementOption = EngagementOption.SCALABLE
+    engagement_option: EngagementOption = EngagementOption.CLOSED
 
     anthropic_api_key: str = ""
     claude_model: str = "claude-opus-4-7"
@@ -43,6 +43,11 @@ class Settings(BaseSettings):
     @property
     def google_oauth_redirect_uri_clean(self) -> str:
         return self.google_oauth_redirect_uri.strip()
+
+    aws_access_key_id: str = ""
+    aws_secret_access_key: str = ""
+    aws_region: str = "us-east-1"
+    aws_s3_bucket: str = "bloomfield-email-attachments"
 
     screener_template_path: str = "templates/bloomfield_origination_screener.xlsx"
 

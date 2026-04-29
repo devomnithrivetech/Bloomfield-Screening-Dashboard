@@ -15,9 +15,12 @@ export interface Email {
   date: string;
   time: string;
   body: string;
+  bodyHtml?: string;
   snippet: string;
   attachments: EmailAttachment[];
   status: EmailStatus;
+  /** deal_id returned by POST /api/emails/:id/process — set after processing completes */
+  deal_id?: string;
 }
 
 export const mockEmails: Email[] = [

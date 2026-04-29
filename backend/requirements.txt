@@ -17,3 +17,5 @@ pdfplumber>=0.11.4
 python-multipart>=0.0.9
 tenacity>=9.0.0
 structlog>=24.4.0
+boto3>=1.34.0
+lxml>=5.0.0
