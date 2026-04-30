@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import io
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
@@ -96,6 +96,57 @@ async def batch_get_emails(
     user: dict = Depends(get_current_user),
 ) -> list[EmailDetail]:
     return await email_service.batch_get_emails(user["id"], body.ids)
+
+
+@router.get("/stats")
+async def get_inbox_stats(user: dict = Depends(get_current_user)) -> dict:
+    """Aggregate stats for the dashboard stats bar."""
+    supabase = get_supabase()
+    uid = user["id"]
+    week_ago = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+    try:
+        total_screened_res = (
+            supabase.table("screened_emails")
+            .select("id", count="exact")
+            .eq("user_id", uid)
+            .eq("processing_status", "complete")
+            .limit(0)
+            .execute()
+        )
+        screened_this_week_res = (
+            supabase.table("screened_emails")
+            .select("id", count="exact")
+            .eq("user_id", uid)
+            .eq("processing_status", "complete")
+            .gte("sent_for_screening_at", week_ago)
+            .limit(0)
+            .execute()
+        )
+        in_progress_res = (
+            supabase.table("screened_emails")
+            .select("id", count="exact")
+            .eq("user_id", uid)
+            .neq("processing_status", "complete")
+            .neq("processing_status", "failed")
+            .limit(0)
+            .execute()
+        )
+        inbox_this_week_res = (
+            supabase.table("emails")
+            .select("id", count="exact")
+            .eq("user_id", uid)
+            .gte("received_at", week_ago)
+            .limit(0)
+            .execute()
+        )
+        return {
+            "total_screened": total_screened_res.count or 0,
+            "screened_this_week": screened_this_week_res.count or 0,
+            "in_progress": in_progress_res.count or 0,
+            "inbox_this_week": inbox_this_week_res.count or 0,
+        }
+    except Exception:
+        return {"total_screened": 0, "screened_this_week": 0, "in_progress": 0, "inbox_this_week": 0}
 
 
 @router.get("/{email_id}", response_model=EmailDetail)

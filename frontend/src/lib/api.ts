@@ -59,6 +59,13 @@ export interface ApiEmailListResponse {
   next_page_token: string | null;
 }
 
+export interface ApiDashboardStats {
+  total_screened: number;
+  screened_this_week: number;
+  in_progress: number;
+  inbox_this_week: number;
+}
+
 export interface ProcessEmailResponse {
   deal_id: string | null;
   status: ApiEmailStatus;
@@ -82,6 +89,7 @@ export const emailsApi = {
     apiFetch<ProcessEmailResponse>(`/api/emails/${emailId}/process`, { method: "POST" }),
   attachmentUrl: (emailId: string, attachmentId: string, filename: string) =>
     `${API_BASE}/api/emails/${emailId}/attachments/${attachmentId}?filename=${encodeURIComponent(filename)}`,
+  stats: () => apiFetch<ApiDashboardStats>("/api/emails/stats"),
 };
 
 // ---------------------------------------------------------------------------

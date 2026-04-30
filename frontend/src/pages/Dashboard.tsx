@@ -8,15 +8,8 @@ import { useNavigate } from "react-router-dom";
 import EmailRow from "@/components/EmailRow";
 import EmailDetail from "@/components/EmailDetail";
 import { mockEmails, type Email } from "@/data/mockEmails";
-import { emailsApi, gmailApi, type ApiEmailDetail } from "@/lib/api";
+import { emailsApi, gmailApi, type ApiEmailDetail, type ApiDashboardStats } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
-
-const stats = [
-  { label: "Deals This Week", value: "8", subtext: "emails received" },
-  { label: "Screened", value: "3", subtext: "2 this week", valueColor: "text-success" },
-  { label: "Pending Review", value: "2", subtext: "processing now", valueColor: "text-warning" },
-  { label: "Avg. Loan Size", value: "$14.2M", subtext: "across active deals" },
-];
 
 // ---------------------------------------------------------------------------
 // Module-level session cache — survives React unmount/remount on navigation
@@ -25,6 +18,7 @@ interface DashboardCache {
   emails: Email[];
   nextPageToken: string | null;
   gmailConnected: boolean | null;
+  stats: ApiDashboardStats | null;
   timestamp: number;
 }
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -113,6 +107,9 @@ const Dashboard = () => {
   const [nextPageToken, setNextPageToken] = useState<string | null>(() =>
     isCacheFresh() ? _cache!.nextPageToken : null
   );
+  const [dashStats, setDashStats] = useState<ApiDashboardStats | null>(() =>
+    isCacheFresh() ? _cache!.stats ?? null : null
+  );
 
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -131,10 +128,12 @@ const Dashboard = () => {
   const applyInboxResult = useCallback(
     (
       listRes: Awaited<ReturnType<typeof emailsApi.list>>,
+      statsRes: ApiDashboardStats,
       connected: boolean,
       isBackground: boolean,
     ) => {
       setGmailConnected(connected);
+      setDashStats(statsRes);
       if (listRes.emails.length > 0) {
         const converted = listRes.emails.map(apiToEmail);
         setEmails(converted);
@@ -143,6 +142,7 @@ const Dashboard = () => {
           emails: converted,
           nextPageToken: listRes.next_page_token,
           gmailConnected: connected,
+          stats: statsRes,
           timestamp: Date.now(),
         };
         if (!isBackground) {
@@ -153,6 +153,13 @@ const Dashboard = () => {
         setEmails(mockEmails);
         setNextPageToken(null);
         setSelectedId((prev) => prev ?? mockEmails[0]?.id ?? null);
+        _cache = {
+          emails: mockEmails,
+          nextPageToken: null,
+          gmailConnected: connected,
+          stats: statsRes,
+          timestamp: Date.now(),
+        };
       }
     },
     [prefetchBodies],
@@ -164,11 +171,12 @@ const Dashboard = () => {
         // Cache is fresh — revalidate silently in the background
         void (async () => {
           try {
-            const [statusRes, listRes] = await Promise.all([
+            const [statusRes, listRes, statsRes] = await Promise.all([
               gmailApi.getStatus(),
               emailsApi.list(),
+              emailsApi.stats(),
             ]);
-            applyInboxResult(listRes, statusRes.connected, true);
+            applyInboxResult(listRes, statsRes, statusRes.connected, true);
           } catch { /* ignore background errors */ }
         })();
         return;
@@ -176,11 +184,12 @@ const Dashboard = () => {
 
       setLoading(true);
       try {
-        const [statusRes, listRes] = await Promise.all([
+        const [statusRes, listRes, statsRes] = await Promise.all([
           gmailApi.getStatus(),
           emailsApi.list(),
+          emailsApi.stats(),
         ]);
-        applyInboxResult(listRes, statusRes.connected, false);
+        applyInboxResult(listRes, statsRes, statusRes.connected, false);
       } catch {
         setGmailConnected(false);
         if (!isCacheFresh()) {
@@ -373,7 +382,34 @@ const Dashboard = () => {
     <div className="flex flex-col h-[calc(100vh-3.5rem)]">
       {/* Stats Bar */}
       <div className="h-[72px] bg-card border-b border-border px-6 flex items-center flex-shrink-0">
-        {stats.map((stat, i) => (
+        {[
+          {
+            label: "Deals Screened",
+            value: dashStats ? String(dashStats.total_screened) : "–",
+            subtext: dashStats
+              ? `${dashStats.screened_this_week} this week`
+              : "all time",
+            valueColor: "text-success",
+          },
+          {
+            label: "Inbox This Week",
+            value: dashStats ? String(dashStats.inbox_this_week) : "–",
+            subtext: "new deal emails",
+          },
+          {
+            label: "In Progress",
+            value: dashStats ? String(dashStats.in_progress) : "–",
+            subtext: "processing now",
+            valueColor: dashStats && dashStats.in_progress > 0 ? "text-warning" : undefined,
+          },
+          {
+            label: "Total Submitted",
+            value: dashStats
+              ? String(dashStats.total_screened + dashStats.in_progress)
+              : "–",
+            subtext: "emails analyzed",
+          },
+        ].map((stat, i) => (
           <div key={stat.label} className="flex items-center">
             {i > 0 && <div className="w-px h-10 bg-border mx-6" />}
             <div className="flex flex-col animate-fade-in">
