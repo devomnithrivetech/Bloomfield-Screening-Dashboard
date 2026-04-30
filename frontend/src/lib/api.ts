@@ -60,7 +60,7 @@ export interface ApiEmailListResponse {
 }
 
 export interface ProcessEmailResponse {
-  deal_id: string;
+  deal_id: string | null;
   status: ApiEmailStatus;
 }
 

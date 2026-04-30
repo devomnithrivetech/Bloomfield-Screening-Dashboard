@@ -56,7 +56,7 @@ class ProcessEmailRequest(BaseModel):
 
 
 class ProcessEmailResponse(BaseModel):
-    deal_id: str
+    deal_id: str | None = None
     status: EmailStatus
 
 

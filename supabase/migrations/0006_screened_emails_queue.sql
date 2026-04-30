@@ -4,11 +4,14 @@
 -- monitor live pipeline progress and revisit results without scrolling
 -- through the inbox.
 -- Safe to run more than once (IF NOT EXISTS / DO NOTHING everywhere).
+-- NOTE: user_id is text (not uuid) to match the pattern established in
+-- migration 0004 where emails.user_id and deals.user_id were changed to
+-- text for single-user dev mode compatibility.
 -- =====================================================================
 
 CREATE TABLE IF NOT EXISTS public.screened_emails (
   id                     uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id                uuid        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id                text        NOT NULL,
   gmail_message_id       text,
   subject                text        NOT NULL DEFAULT '(no subject)',
   sender                 text        NOT NULL DEFAULT 'Unknown',
@@ -22,7 +25,7 @@ CREATE TABLE IF NOT EXISTS public.screened_emails (
       'extracting_financials', 'running_screener', 'complete', 'failed'
     )),
   pipeline               jsonb       NOT NULL DEFAULT '[]'::jsonb,
-  deal_id                uuid,                       -- set once the deal row exists
+  deal_id                text,                       -- set once the deal row exists
   screened_title         text,                       -- property name from LLM output
   screener_s3_key        text,                       -- S3 path to the generated .xlsx
   created_at             timestamptz NOT NULL DEFAULT now(),
@@ -36,7 +39,9 @@ ALTER TABLE public.screened_emails ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "screened_emails_rw_self" ON public.screened_emails;
 CREATE POLICY "screened_emails_rw_self" ON public.screened_emails
-  FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+  FOR ALL
+  USING      (auth.uid()::text = user_id)
+  WITH CHECK (auth.uid()::text = user_id);
 
 DROP TRIGGER IF EXISTS screened_emails_touch_updated ON public.screened_emails;
 CREATE TRIGGER screened_emails_touch_updated

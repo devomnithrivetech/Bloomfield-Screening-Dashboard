@@ -251,14 +251,21 @@ const Dashboard = () => {
     );
     try {
       const result = await emailsApi.process(id);
-      // Mark as Processed and store the deal_id so navigation works
-      setEmails((prev) =>
-        prev.map((e) =>
-          e.id === id
-            ? { ...e, status: "Processed" as const, deal_id: result.deal_id }
-            : e
-        )
-      );
+      // The endpoint now returns immediately (pipeline runs in the background).
+      // deal_id is null at this point — the polling loop will pick up the final
+      // "Processed" state + deal_id once the background task completes.
+      // If (for legacy reasons) a deal_id is already present, advance the status.
+      if (result.deal_id) {
+        setEmails((prev) =>
+          prev.map((e) =>
+            e.id === id
+              ? { ...e, status: "Processed" as const, deal_id: result.deal_id! }
+              : e
+          )
+        );
+      }
+      // Navigate to the Screening Queue so the user can watch live progress
+      navigate("/screened");
     } catch {
       // Revert on failure
       setEmails((prev) =>

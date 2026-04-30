@@ -2,14 +2,16 @@
 from __future__ import annotations
 
 import io
+from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 
 from app.core.security import get_current_user
 from app.core.token_store import load_token
 from app.integrations.gmail import credentials_from_token_data
 from app.integrations.gmail import download_attachment as gmail_download_attachment
+from app.integrations.supabase import get_supabase
 from app.schemas.email import (
     AISummarizeResponse,
     BatchEmailRequest,
@@ -20,6 +22,60 @@ from app.schemas.email import (
 from app.services import deal_service, email_service
 
 router = APIRouter()
+
+
+def _upsert_screened_stub(user_id: str, gmail_message_id: str) -> None:
+    """Create or refresh a 'queued' screened_emails row so it appears in the
+    Screening Queue page immediately — before the pipeline even starts."""
+    supabase = get_supabase()
+    now = datetime.now(timezone.utc).isoformat()
+
+    # Try to pull subject/sender from the emails table (populated on inbox sync)
+    subject, sender, sender_email, received_at = "(loading…)", "Loading…", None, now
+    try:
+        row = (
+            supabase.table("emails")
+            .select("subject, sender, sender_email, received_at")
+            .eq("user_id", user_id)
+            .eq("gmail_message_id", gmail_message_id)
+            .limit(1)
+            .execute()
+        )
+        if row.data:
+            r = row.data[0]
+            subject     = r.get("subject")     or subject
+            sender      = r.get("sender")      or sender
+            sender_email = r.get("sender_email")
+            received_at = r.get("received_at") or received_at
+    except Exception:
+        pass
+
+    stub: dict = {
+        "user_id":               user_id,
+        "gmail_message_id":      gmail_message_id,
+        "subject":               subject,
+        "sender":                sender,
+        "sender_email":          sender_email,
+        "received_at":           received_at,
+        "sent_for_screening_at": now,
+        "processing_status":     "queued",
+        "pipeline":              [],
+    }
+    try:
+        existing = (
+            supabase.table("screened_emails")
+            .select("id")
+            .eq("user_id", user_id)
+            .eq("gmail_message_id", gmail_message_id)
+            .limit(1)
+            .execute()
+        )
+        if existing.data:
+            supabase.table("screened_emails").update(stub).eq("id", existing.data[0]["id"]).execute()
+        else:
+            supabase.table("screened_emails").insert(stub).execute()
+    except Exception:
+        pass
 
 
 @router.get("", response_model=EmailListResponse)
@@ -76,10 +132,15 @@ async def summarize_email(
 
 @router.post("/{email_id}/process", response_model=ProcessEmailResponse)
 async def process_email(
-    email_id: str, user: dict = Depends(get_current_user)
+    email_id: str,
+    background_tasks: BackgroundTasks,
+    user: dict = Depends(get_current_user),
 ) -> ProcessEmailResponse:
-    deal_id = await deal_service.start_screening(user["id"], email_id)
-    return ProcessEmailResponse(deal_id=deal_id, status="processing")
+    # Insert the screened_emails stub NOW so the card is visible immediately.
+    _upsert_screened_stub(user["id"], email_id)
+    # Run the full pipeline in the background — response returns immediately.
+    background_tasks.add_task(deal_service.start_screening, user["id"], email_id)
+    return ProcessEmailResponse(deal_id=None, status="processing")
 
 
 @router.post("/sync")

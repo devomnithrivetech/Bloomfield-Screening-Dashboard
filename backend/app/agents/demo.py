@@ -496,6 +496,7 @@ async def run_demo_screening(user_id: str, gmail_message_id: str) -> str:
     cached = _check_cached_result(supabase, user_id, gmail_message_id)
     if cached:
         log.info("demo_cache_hit", gmail_message_id=gmail_message_id, deal_id=cached)
+        _sync_cached_screened_email(supabase, user_id, gmail_message_id, cached)
         return cached
 
     # 2. Load Gmail credentials
@@ -721,6 +722,38 @@ def _complete_screened_email(
             supabase.table("screened_emails").update(update).eq("id", existing.data[0]["id"]).execute()
     except Exception as exc:
         log.warning("screened_email_complete_failed", gmail_message_id=gmail_message_id, error=str(exc))
+
+
+def _sync_cached_screened_email(
+    supabase: Any,
+    user_id: str,
+    gmail_message_id: str,
+    deal_id: str,
+) -> None:
+    """When a cached deal is found, update the screened_emails stub (created by the
+    endpoint before the background task ran) to reflect the completed state."""
+    try:
+        deal_resp = (
+            supabase.table("deals")
+            .select("property_name, screener_storage_path, pipeline")
+            .eq("id", deal_id)
+            .limit(1)
+            .execute()
+        )
+        if not deal_resp.data:
+            return
+        d = deal_resp.data[0]
+        _complete_screened_email(
+            supabase,
+            user_id,
+            gmail_message_id,
+            deal_id,
+            screened_title=d.get("property_name"),
+            screener_s3_key=d.get("screener_storage_path"),
+            pipeline_stages=d.get("pipeline") or [],
+        )
+    except Exception as exc:
+        log.warning("sync_cached_screened_email_failed", error=str(exc))
 
 
 def _check_cached_result(supabase, user_id: str, gmail_message_id: str) -> str | None:
