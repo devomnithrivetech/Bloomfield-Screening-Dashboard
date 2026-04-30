@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import auth, deals, emails, settings as settings_routes
+from app.api.routes import auth, deals, emails, screened, settings as settings_routes
 from app.core.config import get_settings
 from app.core.logging import configure_logging, get_logger
 
@@ -41,6 +41,7 @@ def create_app() -> FastAPI:
     app.include_router(emails.router, prefix="/api/emails", tags=["emails"])
     app.include_router(deals.router, prefix="/api/deals", tags=["deals"])
     app.include_router(settings_routes.router, prefix="/api/settings", tags=["settings"])
+    app.include_router(screened.router, prefix="/api/screened", tags=["screened"])
 
     @app.get("/health", tags=["health"])
     async def health() -> dict[str, str]:

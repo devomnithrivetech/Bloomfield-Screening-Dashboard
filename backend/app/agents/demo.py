@@ -554,6 +554,86 @@ def _mark_email_processing(
         "attachments":      [],
     }
     _safe_email_write(supabase, user_id, gmail_message_id, row)
+    _upsert_screened_email_queued(supabase, user_id, gmail_message_id, email_detail)
+
+
+def _upsert_screened_email_queued(
+    supabase: Any,
+    user_id: str,
+    gmail_message_id: str,
+    email_detail: Any,
+) -> None:
+    """Insert a screened_emails row when processing starts (idempotent)."""
+    now = datetime.now(timezone.utc).isoformat()
+    initial_pipeline = [
+        {"stage": "email_received",        "status": "in_progress", "started_at": now,  "finished_at": None},
+        {"stage": "parsing_attachments",   "status": "pending",     "started_at": None, "finished_at": None},
+        {"stage": "extracting_financials", "status": "pending",     "started_at": None, "finished_at": None},
+        {"stage": "running_screener",      "status": "pending",     "started_at": None, "finished_at": None},
+        {"stage": "complete",              "status": "pending",     "started_at": None, "finished_at": None},
+    ]
+    row: dict[str, Any] = {
+        "user_id":               user_id,
+        "gmail_message_id":      gmail_message_id,
+        "subject":               email_detail.subject or "(no subject)",
+        "sender":                email_detail.sender or "Unknown",
+        "sender_email":          getattr(email_detail, "sender_email", None),
+        "received_at":           (
+            email_detail.received_at.isoformat()
+            if email_detail.received_at
+            else now
+        ),
+        "sent_for_screening_at": now,
+        "processing_status":     "email_received",
+        "pipeline":              initial_pipeline,
+    }
+    try:
+        existing = (
+            supabase.table("screened_emails")
+            .select("id")
+            .eq("user_id", user_id)
+            .eq("gmail_message_id", gmail_message_id)
+            .limit(1)
+            .execute()
+        )
+        if existing.data:
+            supabase.table("screened_emails").update(row).eq("id", existing.data[0]["id"]).execute()
+        else:
+            supabase.table("screened_emails").insert(row).execute()
+    except Exception as exc:
+        log.warning("screened_email_upsert_failed", gmail_message_id=gmail_message_id, error=str(exc))
+
+
+def _complete_screened_email(
+    supabase: Any,
+    user_id: str,
+    gmail_message_id: str,
+    deal_id: str,
+    screened_title: str | None,
+    screener_s3_key: str | None,
+    pipeline_stages: list[dict],
+) -> None:
+    """Mark the screened_emails row as complete once the deal is persisted."""
+    update: dict[str, Any] = {
+        "processing_status": "complete",
+        "deal_id":           deal_id,
+        "screened_title":    screened_title,
+        "screener_s3_key":   screener_s3_key,
+        "pipeline":          pipeline_stages,
+    }
+    try:
+        existing = (
+            supabase.table("screened_emails")
+            .select("id")
+            .eq("user_id", user_id)
+            .eq("gmail_message_id", gmail_message_id)
+            .limit(1)
+            .execute()
+        )
+        if existing.data:
+            supabase.table("screened_emails").update(update).eq("id", existing.data[0]["id"]).execute()
+    except Exception as exc:
+        log.warning("screened_email_complete_failed", gmail_message_id=gmail_message_id, error=str(exc))
 
 
 def _check_cached_result(supabase, user_id: str, gmail_message_id: str) -> str | None:
@@ -660,6 +740,16 @@ def _persist_to_supabase(
     except Exception as exc:
         log.error("deal_insert_failed", deal_id=deal_id, error=str(exc))
         raise
+
+    _complete_screened_email(
+        supabase,
+        user_id,
+        gmail_message_id,
+        deal_id,
+        screened_title=prop.get("property_name"),
+        screener_s3_key=screener_s3_key,
+        pipeline_stages=pipeline_stages,
+    )
 
 
 def _build_email_draft(result: dict[str, Any]) -> str:

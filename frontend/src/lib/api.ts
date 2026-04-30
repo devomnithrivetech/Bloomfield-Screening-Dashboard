@@ -126,6 +126,41 @@ export const dealsApi = {
 };
 
 // ---------------------------------------------------------------------------
+// Screened emails queue
+// ---------------------------------------------------------------------------
+export type ScreenedEmailStatus =
+  | "queued"
+  | "email_received"
+  | "parsing_attachments"
+  | "extracting_financials"
+  | "running_screener"
+  | "complete"
+  | "failed";
+
+export interface ScreenedEmail {
+  id: string;
+  user_id: string;
+  gmail_message_id: string | null;
+  subject: string;
+  sender: string;
+  sender_email: string | null;
+  received_at: string | null;
+  sent_for_screening_at: string;
+  processing_status: ScreenedEmailStatus;
+  pipeline: ApiPipelineStage[];
+  deal_id: string | null;
+  screened_title: string | null;
+  screener_s3_key: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const screenedApi = {
+  list: () => apiFetch<ScreenedEmail[]>("/api/screened"),
+  screenerUrl: (dealId: string) => `${API_BASE}/api/deals/${dealId}/screener`,
+};
+
+// ---------------------------------------------------------------------------
 // Settings
 // ---------------------------------------------------------------------------
 export interface ApiSettings {

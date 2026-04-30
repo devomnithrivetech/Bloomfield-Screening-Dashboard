@@ -9,6 +9,7 @@ import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import DealDetail from "./pages/DealDetail";
+import ScreenedEmails from "./pages/ScreenedEmails";
 import SettingsPage from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
@@ -43,6 +44,7 @@ const App = () => {
                 <Route element={<Layout />}>
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/deal/:id" element={<DealDetail />} />
+                  <Route path="/screened" element={<ScreenedEmails />} />
                   <Route path="/settings" element={<SettingsPage />} />
                 </Route>
               </Route>

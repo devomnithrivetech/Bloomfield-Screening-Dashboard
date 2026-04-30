@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Search, Inbox, SearchX, Loader2, Mail, PlusCircle } from "lucide-react";
+import { Search, Inbox, SearchX, Loader2, Mail, PlusCircle, ClipboardList } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -290,6 +290,17 @@ const Dashboard = () => {
             </div>
           </div>
         ))}
+        <div className="ml-auto">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 text-xs font-medium border-primary/30 text-primary hover:bg-primary/5 hover:border-primary"
+            onClick={() => navigate("/screened")}
+          >
+            <ClipboardList className="h-4 w-4" />
+            Screening Queue
+          </Button>
+        </div>
       </div>
 
       {/* Two-panel layout */}

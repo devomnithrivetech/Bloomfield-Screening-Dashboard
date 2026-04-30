@@ -1,8 +1,8 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import {
-  ArrowLeft, Check, Download, Mail, AlertTriangle,
-  CheckCircle2, Loader2, Clock,
+  ArrowLeft, Download, Mail, AlertTriangle,
+  CheckCircle2, Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,21 +10,12 @@ import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { dealsApi, type ApiDealDetail, type ApiKeyMetric } from "@/lib/api";
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
-
-const PIPELINE_LABELS: Record<string, string> = {
-  email_received:        "Email Received",
-  parsing_attachments:   "Attachments Extracted",
-  extracting_financials: "AI Analysis",
-  running_screener:      "Screener Generated",
-  complete:              "Ready for Review",
-};
 
 const REC_BADGE: Record<string, { label: string; className: string }> = {
   proceed:   { label: "PROCEED TO DILIGENCE", className: "bg-success/15 text-success border-0 font-semibold text-xs px-3 py-1" },
@@ -119,14 +110,6 @@ const DealDetail = () => {
   const highlights  = deal.highlights[0]?.detail ?? "";
   const risks       = deal.risks[0]?.detail ?? "";
 
-  const pipeline    = deal.pipeline.length > 0
-    ? deal.pipeline
-    : Object.keys(PIPELINE_LABELS).map((stage) => ({
-        stage, status: "pending" as const,
-        started_at: null, finished_at: null, detail: null,
-      }));
-  const completedCount = pipeline.filter((s) => s.status === "completed").length;
-
   return (
     <div className="min-h-[calc(100vh-3.5rem)] bg-background">
       <div className="max-w-[1100px] mx-auto px-6 py-8 space-y-6">
@@ -173,61 +156,7 @@ const DealDetail = () => {
           </CardContent>
         </Card>
 
-        {/* Section 2: Processing Pipeline */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Processing Status</CardTitle>
-          </CardHeader>
-          <CardContent className="pb-6">
-            <div className="flex items-start justify-between relative">
-              <div className="absolute top-3 left-3 right-3 h-0.5 bg-border z-0" />
-              <div
-                className="absolute top-3 left-3 h-0.5 bg-primary z-0 transition-all"
-                style={{
-                  width: `calc(${
-                    pipeline.length > 1
-                      ? ((completedCount - 1) / (pipeline.length - 1)) * 100
-                      : 0
-                  }% - 24px)`,
-                }}
-              />
-              {pipeline.map((stage) => {
-                const label = PIPELINE_LABELS[stage.stage] ?? stage.stage;
-                const ts    = stage.finished_at ?? stage.started_at;
-                const fmtTs = ts
-                  ? new Date(ts).toLocaleString("en-US", {
-                      month: "short", day: "numeric", year: "numeric",
-                      hour: "numeric", minute: "2-digit",
-                    })
-                  : null;
-
-                return (
-                  <div key={stage.stage} className="flex flex-col items-center z-10 flex-1">
-                    <div
-                      className={cn(
-                        "w-6 h-6 rounded-full flex items-center justify-center",
-                        stage.status === "completed"   && "bg-primary",
-                        stage.status === "in_progress" && "bg-accent animate-pulse",
-                        stage.status === "failed"      && "bg-destructive",
-                        (stage.status === "pending" || !stage.status) && "bg-muted border-2 border-border",
-                      )}
-                    >
-                      {stage.status === "completed"   && <Check  className="h-3.5 w-3.5 text-primary-foreground" />}
-                      {stage.status === "in_progress" && <Loader2 className="h-3.5 w-3.5 text-accent-foreground animate-spin" />}
-                      {stage.status === "pending"     && <Clock  className="h-3 w-3 text-muted-foreground" />}
-                    </div>
-                    <span className="text-[11px] font-medium text-foreground mt-2 text-center">{label}</span>
-                    {fmtTs && (
-                      <span className="text-[10px] text-muted-foreground text-center mt-0.5">{fmtTs}</span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Section 3: Key Metrics */}
+        {/* Section 2: Key Metrics */}
         {deal.key_metrics.length > 0 && (
           <Card>
             <CardHeader className="pb-2">
