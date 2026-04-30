@@ -65,11 +65,12 @@ export interface ProcessEmailResponse {
 }
 
 export const emailsApi = {
-  list: (pageToken?: string) => {
-    const url = pageToken
-      ? `/api/emails?page_token=${encodeURIComponent(pageToken)}`
-      : "/api/emails";
-    return apiFetch<ApiEmailListResponse>(url);
+  list: (pageToken?: string, query?: string) => {
+    const params = new URLSearchParams();
+    if (pageToken) params.set("page_token", pageToken);
+    if (query) params.set("q", query);
+    const qs = params.toString();
+    return apiFetch<ApiEmailListResponse>(`/api/emails${qs ? `?${qs}` : ""}`);
   },
   get: (id: string) => apiFetch<ApiEmailDetail>(`/api/emails/${id}`),
   batchGet: (ids: string[]) =>

@@ -81,9 +81,12 @@ def _upsert_screened_stub(user_id: str, gmail_message_id: str) -> None:
 @router.get("", response_model=EmailListResponse)
 async def list_emails(
     page_token: str | None = Query(default=None),
+    q: str | None = Query(default=None),
     user: dict = Depends(get_current_user),
 ) -> EmailListResponse:
-    emails, next_token = await email_service.list_inbox(user["id"], page_token=page_token)
+    emails, next_token = await email_service.list_inbox(
+        user["id"], page_token=page_token, query=q or None
+    )
     return EmailListResponse(emails=emails, next_page_token=next_token)
 
 

@@ -73,13 +73,14 @@ async def list_inbox(
     *,
     limit: int = 20,
     page_token: str | None = None,
+    query: str | None = None,
 ) -> tuple[list[EmailDetail], str | None]:
     credentials = await _get_credentials(user_id)
     if credentials is None:
         return [], None
     try:
         emails, next_token = await list_inbox_messages(
-            credentials, max_results=limit, page_token=page_token
+            credentials, max_results=limit, page_token=page_token, query=query
         )
         emails = await _overlay_supabase_status(user_id, emails)
         return emails, next_token

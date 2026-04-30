@@ -239,11 +239,14 @@ async def list_inbox_messages(
     credentials: Credentials,
     max_results: int = 20,
     page_token: str | None = None,
+    query: str | None = None,
 ) -> tuple[list[EmailDetail], str | None]:
     """Fetch inbox summaries using metadata format (headers + snippet only).
 
     Uses a Gmail batch HTTP request so all per-message metadata fetches are
     sent in a single round-trip instead of one request per message.
+    When `query` is provided, searches all mail (no INBOX restriction) to
+    match Gmail UI search behaviour.
     Returns (emails, next_page_token).
     """
     loop = asyncio.get_event_loop()
@@ -252,11 +255,14 @@ async def list_inbox_messages(
         svc = build_gmail_service(credentials)
         list_kwargs: dict[str, Any] = {
             "userId": "me",
-            "labelIds": ["INBOX"],
             "maxResults": max_results,
         }
+        if not query:
+            list_kwargs["labelIds"] = ["INBOX"]
         if page_token:
             list_kwargs["pageToken"] = page_token
+        if query:
+            list_kwargs["q"] = query
 
         list_res = svc.users().messages().list(**list_kwargs).execute()
         refs = list_res.get("messages", [])

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Search, Inbox, SearchX, Loader2, Mail, PlusCircle, ClipboardList } from "lucide-react";
+import { Search, Inbox, SearchX, Loader2, Mail, PlusCircle, ClipboardList, RefreshCw } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -19,7 +19,31 @@ const stats = [
 ];
 
 // ---------------------------------------------------------------------------
-// Transform Gmail API response → the Email shape used by components
+// Module-level session cache — survives React unmount/remount on navigation
+// ---------------------------------------------------------------------------
+interface DashboardCache {
+  emails: Email[];
+  nextPageToken: string | null;
+  gmailConnected: boolean | null;
+  timestamp: number;
+}
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+let _cache: DashboardCache | null = null;
+// Body cache persists across navigations — email bodies are immutable
+const _bodyCache = new Map<string, Email>();
+
+function isCacheFresh(): boolean {
+  return !!_cache && Date.now() - _cache.timestamp < CACHE_TTL_MS;
+}
+
+const STATUS_RANK: Record<string, number> = {
+  Unprocessed: 0,
+  Processing: 1,
+  Processed: 2,
+};
+
+// ---------------------------------------------------------------------------
+// Helpers
 // ---------------------------------------------------------------------------
 function formatSize(bytes: number | null): string {
   if (!bytes) return "–";
@@ -39,8 +63,6 @@ function apiToEmail(api: ApiEmailDetail): Email {
   const date = dt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
   const time = dt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 
-  const body = api.body_text || api.preview;
-
   return {
     id: api.id,
     sender: api.sender,
@@ -48,7 +70,7 @@ function apiToEmail(api: ApiEmailDetail): Email {
     subject: api.subject,
     date,
     time,
-    body,
+    body: api.body_text || api.preview,
     bodyHtml: api.body_html ?? undefined,
     snippet: api.preview,
     attachments: api.attachments.map((a) => ({
@@ -68,59 +90,118 @@ function apiToEmail(api: ApiEmailDetail): Email {
 const Dashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [emails, setEmails] = useState<Email[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [selectedEmailFull, setSelectedEmailFull] = useState<Email | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [gmailConnected, setGmailConnected] = useState<boolean | null>(null);
-  const [nextPageToken, setNextPageToken] = useState<string | null>(null);
-  // Body cache keyed by email ID — populated by background batch pre-fetch
-  const emailBodyCache = useRef(new Map<string, Email>());
 
-  // Pre-fetch full bodies for a list of emails using a single batch request.
-  // Results go into the cache so subsequent clicks are instant.
+  // Initialize from cache immediately — no loading flash on navigation back
+  const [emails, setEmails] = useState<Email[]>(() => (isCacheFresh() ? _cache!.emails : []));
+  const [selectedId, setSelectedId] = useState<string | null>(() =>
+    isCacheFresh() && _cache!.emails.length > 0 ? _cache!.emails[0].id : null
+  );
+  const [selectedEmailFull, setSelectedEmailFull] = useState<Email | null>(() =>
+    isCacheFresh() && _cache!.emails.length > 0
+      ? (_bodyCache.get(_cache!.emails[0].id) ?? null)
+      : null
+  );
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<Email[] | null>(null);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [loading, setLoading] = useState(() => !isCacheFresh());
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [gmailConnected, setGmailConnected] = useState<boolean | null>(() =>
+    isCacheFresh() ? _cache!.gmailConnected : null
+  );
+  const [nextPageToken, setNextPageToken] = useState<string | null>(() =>
+    isCacheFresh() ? _cache!.nextPageToken : null
+  );
+
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const prefetchBodies = useCallback(async (emailList: Email[]) => {
-    const ids = emailList
-      .filter((e) => !emailBodyCache.current.has(e.id))
-      .map((e) => e.id);
+    const ids = emailList.filter((e) => !_bodyCache.has(e.id)).map((e) => e.id);
     if (!ids.length) return;
     try {
       const details = await emailsApi.batchGet(ids);
-      details.forEach((d) => emailBodyCache.current.set(d.id, apiToEmail(d)));
+      details.forEach((d) => _bodyCache.set(d.id, apiToEmail(d)));
     } catch {
-      // On-demand fetch handles any misses when user selects the email
+      // On-demand fetch handles misses when user selects the email
     }
   }, []);
 
-  const fetchEmails = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [statusRes, listRes] = await Promise.all([
-        gmailApi.getStatus(),
-        emailsApi.list(),
-      ]);
-      setGmailConnected(statusRes.connected);
+  // Applies a successful inbox fetch result to state and the module-level cache.
+  const applyInboxResult = useCallback(
+    (
+      listRes: Awaited<ReturnType<typeof emailsApi.list>>,
+      connected: boolean,
+      isBackground: boolean,
+    ) => {
+      setGmailConnected(connected);
       if (listRes.emails.length > 0) {
         const converted = listRes.emails.map(apiToEmail);
         setEmails(converted);
         setNextPageToken(listRes.next_page_token);
-        setSelectedId(converted[0]?.id ?? null);
-        // Kick off background pre-fetch — don't await so inbox renders immediately
+        _cache = {
+          emails: converted,
+          nextPageToken: listRes.next_page_token,
+          gmailConnected: connected,
+          timestamp: Date.now(),
+        };
+        if (!isBackground) {
+          setSelectedId((prev) => prev ?? converted[0]?.id ?? null);
+        }
         prefetchBodies(converted);
-      } else {
+      } else if (!isBackground) {
         setEmails(mockEmails);
-        setSelectedId(mockEmails[0]?.id ?? null);
+        setNextPageToken(null);
+        setSelectedId((prev) => prev ?? mockEmails[0]?.id ?? null);
       }
-    } catch {
-      setGmailConnected(false);
-      setEmails(mockEmails);
-      setSelectedId(mockEmails[0]?.id ?? null);
-    } finally {
-      setLoading(false);
-    }
-  }, [prefetchBodies]);
+    },
+    [prefetchBodies],
+  );
+
+  const fetchEmails = useCallback(
+    async (force = false) => {
+      if (!force && isCacheFresh()) {
+        // Cache is fresh — revalidate silently in the background
+        void (async () => {
+          try {
+            const [statusRes, listRes] = await Promise.all([
+              gmailApi.getStatus(),
+              emailsApi.list(),
+            ]);
+            applyInboxResult(listRes, statusRes.connected, true);
+          } catch { /* ignore background errors */ }
+        })();
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const [statusRes, listRes] = await Promise.all([
+          gmailApi.getStatus(),
+          emailsApi.list(),
+        ]);
+        applyInboxResult(listRes, statusRes.connected, false);
+      } catch {
+        setGmailConnected(false);
+        if (!isCacheFresh()) {
+          setEmails(mockEmails);
+          setSelectedId((prev) => prev ?? mockEmails[0]?.id ?? null);
+        }
+      } finally {
+        setLoading(false);
+      }
+    },
+    [applyInboxResult],
+  );
+
+  const handleReload = useCallback(async () => {
+    setIsRefreshing(true);
+    setSearchQuery("");
+    setSearchResults(null);
+    _cache = null; // invalidate so fetchEmails does a full reload
+    await fetchEmails(true);
+    setIsRefreshing(false);
+  }, [fetchEmails]);
 
   const loadMoreEmails = useCallback(async () => {
     if (!nextPageToken || loadingMore) return;
@@ -128,12 +209,17 @@ const Dashboard = () => {
     try {
       const listRes = await emailsApi.list(nextPageToken);
       const converted = listRes.emails.map(apiToEmail);
-      setEmails((prev) => [...prev, ...converted]);
+      setEmails((prev) => {
+        const next = [...prev, ...converted];
+        if (_cache) {
+          _cache = { ..._cache, emails: next, nextPageToken: listRes.next_page_token, timestamp: Date.now() };
+        }
+        return next;
+      });
       setNextPageToken(listRes.next_page_token);
       prefetchBodies(converted);
-    } catch {
-      // Button stays visible — user can retry
-    } finally {
+    } catch { /* Button stays visible — user can retry */ }
+    finally {
       setLoadingMore(false);
     }
   }, [nextPageToken, loadingMore, prefetchBodies]);
@@ -142,54 +228,73 @@ const Dashboard = () => {
     fetchEmails();
   }, [fetchEmails]);
 
-  // When selected email changes, serve from cache (instant) or fetch on demand.
+  // Gmail-powered search with 500 ms debounce
+  useEffect(() => {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+
+    const q = searchQuery.trim();
+    if (!q) {
+      setSearchResults(null);
+      setSearchLoading(false);
+      return;
+    }
+
+    setSearchLoading(true);
+    searchDebounceRef.current = setTimeout(async () => {
+      try {
+        const listRes = await emailsApi.list(undefined, q);
+        const converted = listRes.emails.map(apiToEmail);
+        setSearchResults(converted);
+        if (converted.length > 0) setSelectedId(converted[0].id);
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 500);
+
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    };
+  }, [searchQuery]);
+
+  // Serve selected email from persistent body cache or fetch on demand
   useEffect(() => {
     if (!selectedId) {
       setSelectedEmailFull(null);
       return;
     }
-    if (emailBodyCache.current.has(selectedId)) {
-      setSelectedEmailFull(emailBodyCache.current.get(selectedId)!);
+    if (_bodyCache.has(selectedId)) {
+      setSelectedEmailFull(_bodyCache.get(selectedId)!);
       return;
     }
     let cancelled = false;
-    emailsApi.get(selectedId)
+    emailsApi
+      .get(selectedId)
       .then((detail) => {
         if (!cancelled) {
           const email = apiToEmail(detail);
-          emailBodyCache.current.set(selectedId, email);
+          _bodyCache.set(selectedId, email);
           setSelectedEmailFull(email);
         }
       })
       .catch(() => {
         if (!cancelled) setSelectedEmailFull(null);
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [selectedId]);
 
-  const selectedEmail = emails.find((e) => e.id === selectedId) || null;
-  // selectedEmailFull has the full body but may be stale after optimistic status updates.
-  // Merge volatile fields (status, deal_id) from the live emails list so Processing→Processed
-  // transitions always show in the right panel without re-fetching the body.
+  // Merge volatile fields so status transitions reflect without re-fetching body
+  const selectedEmail = emails.find((e) => e.id === selectedId) ?? null;
   const baseEmail = selectedEmailFull ?? selectedEmail;
-  const rightPanelEmail = baseEmail && selectedEmail
-    ? { ...baseEmail, status: selectedEmail.status, deal_id: selectedEmail.deal_id }
-    : baseEmail;
+  const rightPanelEmail =
+    baseEmail && selectedEmail
+      ? { ...baseEmail, status: selectedEmail.status, deal_id: selectedEmail.deal_id }
+      : baseEmail;
 
-  // Poll every 5 s while any email is in "Processing" state so the dashboard
-  // auto-updates when the backend pipeline completes — even if the original
-  // HTTP request was started in a now-unmounted component instance.
-  //
-  // STATUS_RANK enforces a one-way ratchet: polling can only advance an email's
-  // status (Unprocessed → Processing → Processed), never revert it.  Without
-  // this guard, a transient Supabase miss (e.g. the write hasn't landed yet)
-  // would overwrite the optimistic "Processing" state with "Unprocessed",
-  // causing the "Send for Processing" button to re-appear mid-flight.
-  const STATUS_RANK: Record<string, number> = {
-    Unprocessed: 0,
-    Processing: 1,
-    Processed: 2,
-  };
+  // Poll every 5 s while any email is "Processing"
   const hasProcessing = emails.some((e) => e.status === "Processing");
   useEffect(() => {
     if (!hasProcessing) return;
@@ -204,15 +309,13 @@ const Dashboard = () => {
             if (!u) return email;
             const currentRank = STATUS_RANK[email.status] ?? 0;
             const updatedRank = STATUS_RANK[u.status] ?? 0;
-            // Only apply if status advances OR deal_id is newly available
             const statusAdvances = updatedRank > currentRank;
             const dealIdAppears = u.deal_id && u.deal_id !== email.deal_id;
             if (statusAdvances || dealIdAppears) {
               changed = true;
-              // Keep body cache in sync so the right panel reflects the new status
-              if (emailBodyCache.current.has(email.id)) {
-                const cached = emailBodyCache.current.get(email.id)!;
-                emailBodyCache.current.set(email.id, {
+              if (_bodyCache.has(email.id)) {
+                const cached = _bodyCache.get(email.id)!;
+                _bodyCache.set(email.id, {
                   ...cached,
                   status: statusAdvances ? u.status : email.status,
                   deal_id: u.deal_id ?? email.deal_id,
@@ -234,27 +337,12 @@ const Dashboard = () => {
     return () => clearInterval(timer);
   }, [hasProcessing]);
 
-  const filteredEmails = emails.filter((email) => {
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    return (
-      email.sender.toLowerCase().includes(q) ||
-      email.subject.toLowerCase().includes(q) ||
-      email.snippet.toLowerCase().includes(q)
-    );
-  });
-
   const handleSendForProcessing = async (id: string) => {
-    // Optimistic update — show "Processing" immediately
     setEmails((prev) =>
       prev.map((e) => (e.id === id ? { ...e, status: "Processing" as const } : e))
     );
     try {
       const result = await emailsApi.process(id);
-      // The endpoint now returns immediately (pipeline runs in the background).
-      // deal_id is null at this point — the polling loop will pick up the final
-      // "Processed" state + deal_id once the background task completes.
-      // If (for legacy reasons) a deal_id is already present, advance the status.
       if (result.deal_id) {
         setEmails((prev) =>
           prev.map((e) =>
@@ -264,10 +352,8 @@ const Dashboard = () => {
           )
         );
       }
-      // Navigate to the Screening Queue so the user can watch live progress
       navigate("/screened");
     } catch {
-      // Revert on failure
       setEmails((prev) =>
         prev.map((e) => (e.id === id ? { ...e, status: "Unprocessed" as const } : e))
       );
@@ -278,6 +364,10 @@ const Dashboard = () => {
       });
     }
   };
+
+  const isSearchMode = !!searchQuery.trim();
+  const displayedEmails = isSearchMode ? (searchResults ?? []) : emails;
+  const isListLoading = loading || (isSearchMode && searchLoading);
 
   return (
     <div className="flex flex-col h-[calc(100vh-3.5rem)]">
@@ -315,25 +405,42 @@ const Dashboard = () => {
         {/* Left Panel */}
         <div className="w-[38%] border-r border-border bg-background flex flex-col">
           <div className="p-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search emails by keyword, sender, property name..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 bg-card"
-              />
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                {isSearchMode && searchLoading && (
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                )}
+                <Input
+                  placeholder="Search emails by keyword, sender, property name..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 pr-8 bg-card"
+                />
+              </div>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleReload}
+                disabled={loading || isRefreshing}
+                className="h-9 w-9 flex-shrink-0 text-muted-foreground hover:text-foreground"
+                title="Refresh inbox"
+              >
+                <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
+              </Button>
             </div>
           </div>
 
           <div className="px-4 pb-2 flex items-center gap-2">
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Inbox
+              {isSearchMode ? "Search Results" : "Inbox"}
             </span>
-            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5">
-              {filteredEmails.length}
-            </Badge>
-            {gmailConnected === true && (
+            {!isListLoading && (
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5">
+                {displayedEmails.length}
+              </Badge>
+            )}
+            {gmailConnected === true && !isSearchMode && (
               <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 ml-auto bg-success/10 text-success">
                 Gmail
               </Badge>
@@ -341,14 +448,16 @@ const Dashboard = () => {
           </div>
 
           <ScrollArea className="flex-1">
-            {loading ? (
+            {isListLoading ? (
               <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
                 <Loader2 className="h-5 w-5 animate-spin opacity-50" />
-                <span className="text-sm">Loading inbox…</span>
+                <span className="text-sm">
+                  {isSearchMode ? "Searching Gmail…" : "Loading inbox…"}
+                </span>
               </div>
-            ) : filteredEmails.length > 0 ? (
+            ) : displayedEmails.length > 0 ? (
               <>
-                {filteredEmails.map((email) => (
+                {displayedEmails.map((email) => (
                   <EmailRow
                     key={email.id}
                     email={email}
@@ -356,7 +465,7 @@ const Dashboard = () => {
                     onClick={() => setSelectedId(email.id)}
                   />
                 ))}
-                {nextPageToken && !searchQuery && (
+                {nextPageToken && !isSearchMode && (
                   <div className="px-3 py-3 border-t border-border">
                     <Button
                       variant="ghost"
@@ -380,7 +489,9 @@ const Dashboard = () => {
             ) : (
               <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
                 <SearchX className="h-8 w-8 opacity-40" />
-                <p className="text-sm">No emails match your search</p>
+                <p className="text-sm">
+                  {isSearchMode ? "No emails match your search" : "No emails in inbox"}
+                </p>
               </div>
             )}
           </ScrollArea>
