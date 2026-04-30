@@ -209,11 +209,15 @@ def _row_to_deal_detail(row: dict) -> DealDetail:
         risk_rating=row.get("risk_rating"),
         created_at=created,
         metrics=DealMetrics(),       # legacy field — keep for schema compat
-        key_metrics=key_metrics,     # rich [{label, value, flag}] list
+        key_metrics=key_metrics,     # rich [{label, value, flag, per_unit?}] list
         highlights=highlight_objs,
         risks=risk_objs,
         pipeline=pipeline_objs,
         screener_s3_key=row.get("screener_storage_path"),
         screening_email_draft=row.get("email_draft"),
         property_info=prop,
+        financial_summary=row.get("financial_summary"),
+        sources_and_uses=row.get("sources_and_uses"),
+        sponsor_overview=row.get("sponsor_overview"),
+        location_summary=row.get("location_summary"),
     )

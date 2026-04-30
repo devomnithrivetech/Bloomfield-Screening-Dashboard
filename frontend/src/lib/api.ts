@@ -90,6 +90,7 @@ export interface ApiKeyMetric {
   label: string;
   value: string;
   flag: "ok" | "warn";
+  per_unit?: string;
 }
 
 export interface ApiPipelineStage {
@@ -118,6 +119,13 @@ export interface ApiDealDetail {
   screener_s3_key: string | null;
   screening_email_draft: string | null;
   property_info: Record<string, unknown>;
+  financial_summary?: { label: string; value: string; dy?: string }[];
+  sources_and_uses?: {
+    sources: { item: string; total: string; per_unit: string; pct: string }[];
+    uses:    { item: string; total: string; per_unit: string; pct: string }[];
+  };
+  sponsor_overview?:  string | null;
+  location_summary?:  string | null;
 }
 
 export const dealsApi = {

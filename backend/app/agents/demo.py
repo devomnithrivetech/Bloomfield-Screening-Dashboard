@@ -213,12 +213,53 @@ Include 8–12 key metrics in key_metrics. Required metrics (include all that ha
   Year 1 Proforma NOI (% change vs T-12) | Current Occupancy % | Going-in Cap Rate
   DSCR (at specified interest rate) | RevPOR — Revenue per Occupied Resident/month (T-12)
   Labor/Payroll Ratio (% of revenue) | CapEx Reserve ($/unit/yr from T-12 R&M + Plant Ops)
+  In-place DY (= T-12 NOI ÷ Requested Loan Amount; express as a percentage)
+
+For each metric, also supply per_unit where the value can be meaningfully expressed on a \
+per-unit basis (e.g. Requested Loan → loan per unit, T-12 Revenue → revenue per unit, \
+T-12 NOI → NOI per unit, CapEx Reserve → already $/unit). Set per_unit to null for metrics \
+where a per-unit figure is not meaningful (e.g. Occupancy %, DSCR, cap rates, ratios).
 
 Flag as "warn" if:
   LTV >75% | DSCR <1.20x | Occupancy <85% | T-12 NOI margin <15% | Pro Forma NOI >T-12 by >20%
-  Cap rate <7% | Payroll ratio outside 55–65% | R&M <$1,000/unit/yr
+  Cap rate <7% | Payroll ratio outside 55–65% | R&M <$1,000/unit/yr | In-place DY <8%
 
 Flag as "ok" if within acceptable range.
+
+═══════════════════════════════════════════════════════════════════════
+ADDITIONAL EXTRACTION REQUIREMENTS
+═══════════════════════════════════════════════════════════════════════
+
+FINANCIAL SUMMARY (financial_summary array in screening_result):
+Produce exactly these four rows in order, formatting dollar values with $ and commas:
+  label: "T-12 NOI"            | value: T-12 NOI dollar amount
+  label: "T-3M Annualized NOI" | value: T-3M annualized NOI dollar amount
+  label: "Pro Forma NOI"       | value: Year 1 proforma NOI dollar amount
+  label: "Current Occupancy"   | value: occupancy percentage string (e.g. "87.3%")
+For the first three rows, compute dy = (NOI ÷ Requested Loan) expressed as a percentage \
+string (e.g. "9.2%"). Set dy to null for Current Occupancy. If a value is unavailable, \
+use "N/A" for value and null for dy.
+
+SOURCES & USES (sources_and_uses object in screening_result):
+Extract the Sources & Uses table from the financing memo if present. If not explicitly \
+provided, reconstruct it from the loan terms data. Typical structure:
+  Sources: Loan Proceeds (net of reserves), Interest Reserve, Equity / Sponsor Contribution
+  Uses: Purchase Price (or payoff amount), CapEx Reserve, Origination Fee, \
+        Interest Reserve, Closing Costs, Other
+Format every row with: item (string), total (dollar string with $ and commas), \
+per_unit (dollar/unit string), pct (percentage of total, e.g. "72.4%"). \
+If no data is available for this section, omit the field entirely.
+
+SPONSOR OVERVIEW (sponsor_overview in deal_summary):
+Write 1–2 sentences on the proposed borrower/sponsor entity. Include entity name, \
+operator experience, years in business, portfolio size, and geographic focus if available. \
+If sponsor information is absent from the documents, write a single sentence noting \
+what information was not provided.
+
+LOCATION SUMMARY (location_summary in deal_summary):
+Write 1–2 sentences on the property's market and location context. Reference the MSA, \
+75+ population size or growth trajectory, household income levels, home values, and \
+proximity to healthcare infrastructure where data is available. Note any data gaps.
 
 CALL submit_screening_result once with all extracted and computed data. Output nothing outside the \
 tool call."""
@@ -355,6 +396,8 @@ SCREENER_TOOL: dict[str, Any] = {
                     "property_overview":     {"type": "string"},
                     "investment_highlights": {"type": "string"},
                     "investment_risks":      {"type": "string"},
+                    "sponsor_overview":      {"type": ["string", "null"]},
+                    "location_summary":      {"type": ["string", "null"]},
                 },
             },
             "screening_result": {
@@ -379,9 +422,53 @@ SCREENER_TOOL: dict[str, Any] = {
                             "type": "object",
                             "required": ["label", "value", "flag"],
                             "properties": {
+                                "label":    {"type": "string"},
+                                "value":    {"type": "string"},
+                                "flag":     {"type": "string", "enum": ["ok", "warn"]},
+                                "per_unit": {"type": ["string", "null"]},
+                            },
+                        },
+                    },
+                    "financial_summary": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "required": ["label", "value"],
+                            "properties": {
                                 "label": {"type": "string"},
                                 "value": {"type": "string"},
-                                "flag":  {"type": "string", "enum": ["ok", "warn"]},
+                                "dy":    {"type": ["string", "null"]},
+                            },
+                        },
+                    },
+                    "sources_and_uses": {
+                        "type": "object",
+                        "properties": {
+                            "sources": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "required": ["item", "total", "per_unit", "pct"],
+                                    "properties": {
+                                        "item":     {"type": "string"},
+                                        "total":    {"type": "string"},
+                                        "per_unit": {"type": "string"},
+                                        "pct":      {"type": "string"},
+                                    },
+                                },
+                            },
+                            "uses": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "required": ["item", "total", "per_unit", "pct"],
+                                    "properties": {
+                                        "item":     {"type": "string"},
+                                        "total":    {"type": "string"},
+                                        "per_unit": {"type": "string"},
+                                        "pct":      {"type": "string"},
+                                    },
+                                },
                             },
                         },
                     },
@@ -725,7 +812,11 @@ def _persist_to_supabase(
                 "severity": screening.get("risk_rating", "moderate"),
             }
         ],
-        "pipeline":      pipeline_stages,
+        "pipeline":         pipeline_stages,
+        "financial_summary":screening.get("financial_summary"),
+        "sources_and_uses": screening.get("sources_and_uses"),
+        "sponsor_overview": summary.get("sponsor_overview"),
+        "location_summary": summary.get("location_summary"),
         "property_info": result.get("property_info") or {},
         "financials":    {
             "historical": result.get("financials") or {},

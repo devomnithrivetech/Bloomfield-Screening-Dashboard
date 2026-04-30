@@ -59,9 +59,28 @@ class DealMetrics(BaseModel):
 
 class KeyMetric(BaseModel):
     """One row in the Deal Metrics display grid."""
+    label:    str
+    value:    str
+    flag:     str       # "ok" | "warn"
+    per_unit: str | None = None
+
+
+class FinancialSummaryRow(BaseModel):
     label: str
     value: str
-    flag:  str  # "ok" | "warn"
+    dy:    str | None = None
+
+
+class SourceUseRow(BaseModel):
+    item:     str
+    total:    str
+    per_unit: str
+    pct:      str
+
+
+class SourcesAndUses(BaseModel):
+    sources: list[SourceUseRow] = []
+    uses:    list[SourceUseRow] = []
 
 
 class Highlight(BaseModel):
@@ -91,7 +110,7 @@ class DealSummary(BaseModel):
 class DealDetail(DealSummary):
     # Legacy field — kept for schema compat; use key_metrics instead
     metrics:               DealMetrics          = DealMetrics()
-    # Rich [{label, value, flag}] array produced by the demo agent
+    # Rich [{label, value, flag, per_unit?}] array produced by the demo agent
     key_metrics:           list[dict[str, Any]] = []
     highlights:            list[Highlight]      = []
     risks:                 list[RiskFlag]       = []
@@ -100,6 +119,11 @@ class DealDetail(DealSummary):
     screening_email_draft: str | None = None
     # Full property info dict for frontend display
     property_info:         dict[str, Any] = {}
+    # New structured financial fields
+    financial_summary:     list[dict[str, Any]] | None = None
+    sources_and_uses:      dict[str, Any] | None = None
+    sponsor_overview:      str | None = None
+    location_summary:      str | None = None
 
 
 class DealListResponse(BaseModel):

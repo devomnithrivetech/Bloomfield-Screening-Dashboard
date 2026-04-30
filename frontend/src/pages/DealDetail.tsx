@@ -103,12 +103,12 @@ const DealDetail = () => {
   }
 
   // ── Resolved data ─────────────────────────────────────────────────────────
-  const pi          = deal.property_info ?? {};
+  const pi           = deal.property_info ?? {};
   const propertyTags = formatPropertyTags(deal);
-  const recBadge    = REC_BADGE[deal.recommendation ?? ""] ?? null;
+  const recBadge     = REC_BADGE[deal.recommendation ?? ""] ?? null;
 
-  const highlights  = deal.highlights[0]?.detail ?? "";
-  const risks       = deal.risks[0]?.detail ?? "";
+  const highlights = deal.highlights[0]?.detail ?? "";
+  const risks      = deal.risks[0]?.detail ?? "";
 
   return (
     <div className="min-h-[calc(100vh-3.5rem)] bg-background">
@@ -156,31 +156,147 @@ const DealDetail = () => {
           </CardContent>
         </Card>
 
-        {/* Section 2: Key Metrics */}
+        {/* Section 3: Deal Metrics — table layout */}
         {deal.key_metrics.length > 0 && (
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base">Deal Metrics</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-3 gap-3">
-                {deal.key_metrics.map((m: ApiKeyMetric) => (
-                  <div key={m.label} className="border border-border rounded-lg p-4 flex flex-col gap-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">{m.label}</span>
-                      {m.flag === "warn" ? (
-                        <span className="flex items-center gap-0.5 text-[10px] text-warning font-medium">
-                          <AlertTriangle className="h-3 w-3" /> Flag
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-0.5 text-[10px] text-success font-medium">
-                          <CheckCircle2 className="h-3 w-3" /> OK
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-base font-semibold text-foreground">{m.value}</span>
-                  </div>
-                ))}
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2 pr-4 font-medium text-muted-foreground text-xs">Metric</th>
+                    <th className="text-right py-2 pr-4 font-medium text-muted-foreground text-xs">Value</th>
+                    <th className="text-right py-2 pr-4 font-medium text-muted-foreground text-xs">Per Unit</th>
+                    <th className="text-right py-2 font-medium text-muted-foreground text-xs">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {deal.key_metrics.map((m: ApiKeyMetric) => (
+                    <tr key={m.label} className="border-b border-border/50 last:border-0">
+                      <td className="py-2.5 pr-4">
+                        <span className="text-sm font-medium text-foreground">{m.label}</span>
+                        {m.label === "In-place DY" && (
+                          <span className="block text-[11px] text-muted-foreground leading-tight mt-0.5">
+                            TTM NOI / Requested Loan
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2.5 pr-4 text-right font-semibold">{m.value}</td>
+                      <td className="py-2.5 pr-4 text-right text-muted-foreground">{m.per_unit ?? "—"}</td>
+                      <td className="py-2.5 text-right">
+                        {m.flag === "warn" ? (
+                          <span className="flex items-center justify-end gap-0.5 text-[11px] text-warning font-medium">
+                            <AlertTriangle className="h-3 w-3" /> Flag
+                          </span>
+                        ) : (
+                          <span className="flex items-center justify-end gap-0.5 text-[11px] text-success font-medium">
+                            <CheckCircle2 className="h-3 w-3" /> OK
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Section 3b: Financial Summary Highlights */}
+        {deal.financial_summary && deal.financial_summary.length > 0 && (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Financial Summary Highlights</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2 pr-4 font-medium text-muted-foreground text-xs">Metric</th>
+                    <th className="text-right py-2 pr-4 font-medium text-muted-foreground text-xs">Value</th>
+                    <th className="text-right py-2 font-medium text-muted-foreground text-xs">DY</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {deal.financial_summary.map((row) => (
+                    <tr key={row.label} className="border-b border-border/50 last:border-0">
+                      <td className="py-2.5 pr-4 text-sm">{row.label}</td>
+                      <td className="py-2.5 pr-4 text-right font-semibold">{row.value}</td>
+                      <td className="py-2.5 text-right text-muted-foreground">{row.dy ?? "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Section 3c: Sources & Uses */}
+        {deal.sources_and_uses && (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Sources &amp; Uses</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-6">
+                {/* Sources */}
+                <div>
+                  <h4 className="text-sm font-semibold mb-3">Sources</h4>
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="text-left py-1.5 pr-2 font-medium text-muted-foreground text-xs">Item</th>
+                        <th className="text-right py-1.5 pr-2 font-medium text-muted-foreground text-xs">Total</th>
+                        <th className="text-right py-1.5 pr-2 font-medium text-muted-foreground text-xs">Per Unit</th>
+                        <th className="text-right py-1.5 font-medium text-muted-foreground text-xs">%</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {deal.sources_and_uses.sources.map((row) => (
+                        <tr key={row.item} className="border-b border-border/50 last:border-0">
+                          <td className="py-2 pr-2 text-sm">{row.item}</td>
+                          <td className="py-2 pr-2 text-right">{row.total}</td>
+                          <td className="py-2 pr-2 text-right text-muted-foreground">{row.per_unit}</td>
+                          <td className="py-2 text-right text-muted-foreground">{row.pct}</td>
+                        </tr>
+                      ))}
+                      <tr className="border-t border-border">
+                        <td className="py-2 pr-2 text-sm font-semibold">Total</td>
+                        <td colSpan={3} className="py-2 text-right text-muted-foreground">—</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                {/* Uses */}
+                <div>
+                  <h4 className="text-sm font-semibold mb-3">Uses</h4>
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="text-left py-1.5 pr-2 font-medium text-muted-foreground text-xs">Item</th>
+                        <th className="text-right py-1.5 pr-2 font-medium text-muted-foreground text-xs">Total</th>
+                        <th className="text-right py-1.5 pr-2 font-medium text-muted-foreground text-xs">Per Unit</th>
+                        <th className="text-right py-1.5 font-medium text-muted-foreground text-xs">%</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {deal.sources_and_uses.uses.map((row) => (
+                        <tr key={row.item} className="border-b border-border/50 last:border-0">
+                          <td className="py-2 pr-2 text-sm">{row.item}</td>
+                          <td className="py-2 pr-2 text-right">{row.total}</td>
+                          <td className="py-2 pr-2 text-right text-muted-foreground">{row.per_unit}</td>
+                          <td className="py-2 text-right text-muted-foreground">{row.pct}</td>
+                        </tr>
+                      ))}
+                      <tr className="border-t border-border">
+                        <td className="py-2 pr-2 text-sm font-semibold">Total</td>
+                        <td colSpan={3} className="py-2 text-right text-muted-foreground">—</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -209,6 +325,36 @@ const DealDetail = () => {
                 <CardContent>
                   <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
                     {risks}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
+
+        {/* Section 4b/4c: Sponsor Overview + Location Summary */}
+        {(deal.sponsor_overview || deal.location_summary) && (
+          <div className="grid grid-cols-2 gap-6">
+            {deal.sponsor_overview && (
+              <Card className="border-t-[3px] border-t-primary">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Sponsor Overview</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+                    {deal.sponsor_overview}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+            {deal.location_summary && (
+              <Card className="border-t-[3px] border-t-muted-foreground/30">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Location Summary</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+                    {deal.location_summary}
                   </p>
                 </CardContent>
               </Card>

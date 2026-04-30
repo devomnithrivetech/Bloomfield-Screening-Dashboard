@@ -25,5 +25,9 @@ class DealRecord:
     highlights: list[dict] = field(default_factory=list)
     risks: list[dict] = field(default_factory=list)
     pipeline: list[dict] = field(default_factory=list)
+    financial_summary: list[dict] | None = None
+    sources_and_uses: dict | None = None
+    sponsor_overview: str | None = None
+    location_summary: str | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
