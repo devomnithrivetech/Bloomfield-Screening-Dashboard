@@ -5,7 +5,7 @@ import {
   CheckCircle2, Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -31,6 +31,41 @@ function formatPropertyTags(deal: ApiDealDetail): string[] {
   if (pi.year_built)    tags.push(`Built ${pi.year_built}`);
   if (pi.building_sf)   tags.push(`${Number(pi.building_sf).toLocaleString()} SF`);
   return tags;
+}
+
+// Reusable card section header — uppercase label with a hard bottom rule
+function SectionHeader({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="px-6 py-3.5 border-b border-border bg-muted/20">
+      <h2 className="text-[11px] font-semibold tracking-widest uppercase text-muted-foreground">
+        {children}
+      </h2>
+    </div>
+  );
+}
+
+// Reusable column sub-header inside a split panel
+function PanelLabel({ accent, children }: { accent: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-2.5 mb-4">
+      <div className={`w-0.5 h-[18px] rounded-full flex-shrink-0 ${accent}`} />
+      <span className="text-xs font-semibold tracking-wider uppercase text-foreground">
+        {children}
+      </span>
+    </div>
+  );
+}
+
+// Table header cell
+function Th({ right, children }: { right?: boolean; children: React.ReactNode }) {
+  return (
+    <th
+      className={`px-6 py-2.5 text-[11px] font-semibold tracking-wider uppercase text-muted-foreground whitespace-nowrap
+        ${right ? "text-right" : "text-left"}`}
+    >
+      {children}
+    </th>
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -70,7 +105,7 @@ const DealDetail = () => {
     }, 900);
   };
 
-  // ── Loading state ──────────────────────────────────────────────────────────
+  // ── Loading ────────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="min-h-[calc(100vh-3.5rem)] bg-background flex items-center justify-center">
@@ -106,13 +141,12 @@ const DealDetail = () => {
   const pi           = deal.property_info ?? {};
   const propertyTags = formatPropertyTags(deal);
   const recBadge     = REC_BADGE[deal.recommendation ?? ""] ?? null;
-
-  const highlights = deal.highlights[0]?.detail ?? "";
-  const risks      = deal.risks[0]?.detail ?? "";
+  const highlights   = deal.highlights[0]?.detail ?? "";
+  const risks        = deal.risks[0]?.detail ?? "";
 
   return (
     <div className="min-h-[calc(100vh-3.5rem)] bg-background">
-      <div className="max-w-[1100px] mx-auto px-6 py-8 space-y-6">
+      <div className="max-w-[1100px] mx-auto px-6 py-8 space-y-5">
 
         {/* Back */}
         <button
@@ -123,31 +157,35 @@ const DealDetail = () => {
           Back to Dashboard
         </button>
 
-        {/* Section 1: Deal Header */}
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h1 className="text-2xl font-bold text-primary">{deal.property_name}</h1>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {[pi.address, pi.city_state, pi.county].filter(Boolean).join("  ·  ")}
+        {/* ── Section 1: Deal Header ─────────────────────────────────────── */}
+        <Card className="overflow-hidden">
+          <CardContent className="p-0">
+            <div className="px-6 py-5 flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <h1 className="text-xl font-bold text-foreground leading-snug truncate">
+                  {deal.property_name}
+                </h1>
+                <p className="text-sm text-muted-foreground mt-1.5">
+                  {[pi.address, pi.city_state, pi.county]
+                    .filter(Boolean)
+                    .join("  ·  ")}
                 </p>
               </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
                 {recBadge && (
                   <Badge className={recBadge.className}>{recBadge.label}</Badge>
                 )}
                 {pi.deal_type && (
-                  <Badge className="bg-primary text-primary-foreground border-0 font-semibold text-xs px-3 py-1">
+                  <Badge className="bg-primary/10 text-primary border border-primary/20 font-semibold text-xs px-3 py-1">
                     {String(pi.deal_type)}
                   </Badge>
                 )}
               </div>
             </div>
             {propertyTags.length > 0 && (
-              <div className="flex items-center gap-2 mt-4 flex-wrap">
+              <div className="px-6 py-3 border-t border-border bg-muted/20 flex items-center gap-2 flex-wrap">
                 {propertyTags.map((tag) => (
-                  <Badge key={tag} variant="secondary" className="text-xs font-medium">
+                  <Badge key={tag} variant="outline" className="text-xs font-medium text-muted-foreground">
                     {tag}
                   </Badge>
                 ))}
@@ -156,42 +194,42 @@ const DealDetail = () => {
           </CardContent>
         </Card>
 
-        {/* Section 3: Deal Metrics — table layout */}
+        {/* ── Section 3: Deal Metrics ────────────────────────────────────── */}
         {deal.key_metrics.length > 0 && (
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Deal Metrics</CardTitle>
-            </CardHeader>
-            <CardContent>
+          <Card className="overflow-hidden">
+            <SectionHeader>Deal Metrics</SectionHeader>
+            <CardContent className="p-0">
               <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-2 pr-4 font-medium text-muted-foreground text-xs">Metric</th>
-                    <th className="text-right py-2 pr-4 font-medium text-muted-foreground text-xs">Value</th>
-                    <th className="text-right py-2 pr-4 font-medium text-muted-foreground text-xs">Per Unit</th>
-                    <th className="text-right py-2 font-medium text-muted-foreground text-xs">Status</th>
+                <thead className="bg-muted/40 border-b border-border">
+                  <tr>
+                    <Th>Metric</Th>
+                    <Th right>Value</Th>
+                    <Th right>Per Unit</Th>
+                    <Th right>Status</Th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-border/60">
                   {deal.key_metrics.map((m: ApiKeyMetric) => (
-                    <tr key={m.label} className="border-b border-border/50 last:border-0">
-                      <td className="py-2.5 pr-4">
+                    <tr key={m.label} className="hover:bg-muted/30 transition-colors">
+                      <td className="px-6 py-3">
                         <span className="text-sm font-medium text-foreground">{m.label}</span>
                         {m.label === "In-place DY" && (
-                          <span className="block text-[11px] text-muted-foreground leading-tight mt-0.5">
+                          <span className="block text-[11px] text-muted-foreground mt-0.5">
                             TTM NOI / Requested Loan
                           </span>
                         )}
                       </td>
-                      <td className="py-2.5 pr-4 text-right font-semibold">{m.value}</td>
-                      <td className="py-2.5 pr-4 text-right text-muted-foreground">{m.per_unit ?? "—"}</td>
-                      <td className="py-2.5 text-right">
+                      <td className="px-6 py-3 text-right font-semibold tabular-nums">{m.value}</td>
+                      <td className="px-6 py-3 text-right text-muted-foreground tabular-nums">
+                        {m.per_unit ?? "—"}
+                      </td>
+                      <td className="px-6 py-3 text-right">
                         {m.flag === "warn" ? (
-                          <span className="flex items-center justify-end gap-0.5 text-[11px] text-warning font-medium">
+                          <span className="inline-flex items-center justify-end gap-1 text-[11px] font-semibold text-warning">
                             <AlertTriangle className="h-3 w-3" /> Flag
                           </span>
                         ) : (
-                          <span className="flex items-center justify-end gap-0.5 text-[11px] text-success font-medium">
+                          <span className="inline-flex items-center justify-end gap-1 text-[11px] font-semibold text-success">
                             <CheckCircle2 className="h-3 w-3" /> OK
                           </span>
                         )}
@@ -204,27 +242,27 @@ const DealDetail = () => {
           </Card>
         )}
 
-        {/* Section 3b: Financial Summary Highlights */}
+        {/* ── Section 3b: Financial Summary Highlights ──────────────────── */}
         {deal.financial_summary && deal.financial_summary.length > 0 && (
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Financial Summary Highlights</CardTitle>
-            </CardHeader>
-            <CardContent>
+          <Card className="overflow-hidden">
+            <SectionHeader>Financial Summary Highlights</SectionHeader>
+            <CardContent className="p-0">
               <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-2 pr-4 font-medium text-muted-foreground text-xs">Metric</th>
-                    <th className="text-right py-2 pr-4 font-medium text-muted-foreground text-xs">Value</th>
-                    <th className="text-right py-2 font-medium text-muted-foreground text-xs">DY</th>
+                <thead className="bg-muted/40 border-b border-border">
+                  <tr>
+                    <Th>Metric</Th>
+                    <Th right>Value</Th>
+                    <Th right>Debt Yield</Th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-border/60">
                   {deal.financial_summary.map((row) => (
-                    <tr key={row.label} className="border-b border-border/50 last:border-0">
-                      <td className="py-2.5 pr-4 text-sm">{row.label}</td>
-                      <td className="py-2.5 pr-4 text-right font-semibold">{row.value}</td>
-                      <td className="py-2.5 text-right text-muted-foreground">{row.dy ?? "—"}</td>
+                    <tr key={row.label} className="hover:bg-muted/30 transition-colors">
+                      <td className="px-6 py-3 text-sm">{row.label}</td>
+                      <td className="px-6 py-3 text-right font-semibold tabular-nums">{row.value}</td>
+                      <td className="px-6 py-3 text-right text-muted-foreground tabular-nums">
+                        {row.dy ?? "—"}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -233,138 +271,141 @@ const DealDetail = () => {
           </Card>
         )}
 
-        {/* Section 3c: Sources & Uses */}
+        {/* ── Section 3c: Sources & Uses ────────────────────────────────── */}
         {deal.sources_and_uses && (
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Sources &amp; Uses</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-6">
-                {/* Sources */}
-                <div>
-                  <h4 className="text-sm font-semibold mb-3">Sources</h4>
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-border">
-                        <th className="text-left py-1.5 pr-2 font-medium text-muted-foreground text-xs">Item</th>
-                        <th className="text-right py-1.5 pr-2 font-medium text-muted-foreground text-xs">Total</th>
-                        <th className="text-right py-1.5 pr-2 font-medium text-muted-foreground text-xs">Per Unit</th>
-                        <th className="text-right py-1.5 font-medium text-muted-foreground text-xs">%</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {deal.sources_and_uses.sources.map((row) => (
-                        <tr key={row.item} className="border-b border-border/50 last:border-0">
-                          <td className="py-2 pr-2 text-sm">{row.item}</td>
-                          <td className="py-2 pr-2 text-right">{row.total}</td>
-                          <td className="py-2 pr-2 text-right text-muted-foreground">{row.per_unit}</td>
-                          <td className="py-2 text-right text-muted-foreground">{row.pct}</td>
-                        </tr>
-                      ))}
-                      <tr className="border-t border-border">
-                        <td className="py-2 pr-2 text-sm font-semibold">Total</td>
-                        <td colSpan={3} className="py-2 text-right text-muted-foreground">—</td>
-                      </tr>
-                    </tbody>
-                  </table>
+          <Card className="overflow-hidden">
+            <SectionHeader>Sources &amp; Uses</SectionHeader>
+            <div className="grid grid-cols-2 divide-x divide-border">
+              {/* Sources */}
+              <div>
+                <div className="px-6 py-2.5 border-b border-border/60 bg-muted/10">
+                  <span className="text-[11px] font-semibold tracking-wider uppercase text-foreground">
+                    Sources
+                  </span>
                 </div>
-                {/* Uses */}
-                <div>
-                  <h4 className="text-sm font-semibold mb-3">Uses</h4>
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-border">
-                        <th className="text-left py-1.5 pr-2 font-medium text-muted-foreground text-xs">Item</th>
-                        <th className="text-right py-1.5 pr-2 font-medium text-muted-foreground text-xs">Total</th>
-                        <th className="text-right py-1.5 pr-2 font-medium text-muted-foreground text-xs">Per Unit</th>
-                        <th className="text-right py-1.5 font-medium text-muted-foreground text-xs">%</th>
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/40 border-b border-border">
+                    <tr>
+                      <Th>Item</Th>
+                      <Th right>Total</Th>
+                      <Th right>Per Unit</Th>
+                      <Th right>%</Th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/60">
+                    {deal.sources_and_uses.sources.map((row) => (
+                      <tr key={row.item} className="hover:bg-muted/30 transition-colors">
+                        <td className="px-6 py-2.5 text-sm">{row.item}</td>
+                        <td className="px-6 py-2.5 text-right tabular-nums">{row.total}</td>
+                        <td className="px-6 py-2.5 text-right text-muted-foreground tabular-nums">{row.per_unit}</td>
+                        <td className="px-6 py-2.5 text-right text-muted-foreground tabular-nums">{row.pct}</td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {deal.sources_and_uses.uses.map((row) => (
-                        <tr key={row.item} className="border-b border-border/50 last:border-0">
-                          <td className="py-2 pr-2 text-sm">{row.item}</td>
-                          <td className="py-2 pr-2 text-right">{row.total}</td>
-                          <td className="py-2 pr-2 text-right text-muted-foreground">{row.per_unit}</td>
-                          <td className="py-2 text-right text-muted-foreground">{row.pct}</td>
-                        </tr>
-                      ))}
-                      <tr className="border-t border-border">
-                        <td className="py-2 pr-2 text-sm font-semibold">Total</td>
-                        <td colSpan={3} className="py-2 text-right text-muted-foreground">—</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+                    ))}
+                    <tr className="bg-muted/20 border-t border-border">
+                      <td className="px-6 py-2.5 text-sm font-semibold">Total</td>
+                      <td colSpan={3} className="px-6 py-2.5 text-right text-muted-foreground">—</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
-            </CardContent>
+              {/* Uses */}
+              <div>
+                <div className="px-6 py-2.5 border-b border-border/60 bg-muted/10">
+                  <span className="text-[11px] font-semibold tracking-wider uppercase text-foreground">
+                    Uses
+                  </span>
+                </div>
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/40 border-b border-border">
+                    <tr>
+                      <Th>Item</Th>
+                      <Th right>Total</Th>
+                      <Th right>Per Unit</Th>
+                      <Th right>%</Th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/60">
+                    {deal.sources_and_uses.uses.map((row) => (
+                      <tr key={row.item} className="hover:bg-muted/30 transition-colors">
+                        <td className="px-6 py-2.5 text-sm">{row.item}</td>
+                        <td className="px-6 py-2.5 text-right tabular-nums">{row.total}</td>
+                        <td className="px-6 py-2.5 text-right text-muted-foreground tabular-nums">{row.per_unit}</td>
+                        <td className="px-6 py-2.5 text-right text-muted-foreground tabular-nums">{row.pct}</td>
+                      </tr>
+                    ))}
+                    <tr className="bg-muted/20 border-t border-border">
+                      <td className="px-6 py-2.5 text-sm font-semibold">Total</td>
+                      <td colSpan={3} className="px-6 py-2.5 text-right text-muted-foreground">—</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </Card>
         )}
 
-        {/* Section 4: Highlights & Risks */}
+        {/* ── Section 4: Investment Highlights & Risks ───────────────────── */}
         {(highlights || risks) && (
-          <div className="grid grid-cols-2 gap-6">
-            {highlights && (
-              <Card className="border-t-[3px] border-t-primary">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">Investment Highlights</CardTitle>
-                </CardHeader>
-                <CardContent>
+          <Card className="overflow-hidden">
+            <SectionHeader>Analysis</SectionHeader>
+            <div className={highlights && risks ? "grid grid-cols-2 divide-x divide-border" : ""}>
+              {highlights && (
+                <div className="p-6">
+                  <PanelLabel accent="bg-primary">Investment Highlights</PanelLabel>
                   <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
                     {highlights}
                   </p>
-                </CardContent>
-              </Card>
-            )}
-            {risks && (
-              <Card className="border-t-[3px] border-t-destructive">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">Investment Risks &amp; Underwriting Flags</CardTitle>
-                </CardHeader>
-                <CardContent>
+                </div>
+              )}
+              {risks && (
+                <div className="p-6">
+                  <PanelLabel accent="bg-destructive">
+                    Investment Risks &amp; Underwriting Flags
+                  </PanelLabel>
                   <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
                     {risks}
                   </p>
-                </CardContent>
-              </Card>
-            )}
-          </div>
+                </div>
+              )}
+            </div>
+          </Card>
         )}
 
-        {/* Section 4b/4c: Sponsor Overview + Location Summary */}
+        {/* ── Section 4b/4c: Sponsor Overview + Location Summary ─────────── */}
         {(deal.sponsor_overview || deal.location_summary) && (
-          <div className="grid grid-cols-2 gap-6">
-            {deal.sponsor_overview && (
-              <Card className="border-t-[3px] border-t-primary">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">Sponsor Overview</CardTitle>
-                </CardHeader>
-                <CardContent>
+          <Card className="overflow-hidden">
+            <SectionHeader>Sponsor &amp; Market</SectionHeader>
+            <div
+              className={
+                deal.sponsor_overview && deal.location_summary
+                  ? "grid grid-cols-2 divide-x divide-border"
+                  : ""
+              }
+            >
+              {deal.sponsor_overview && (
+                <div className="p-6">
+                  <PanelLabel accent="bg-primary">Sponsor Overview</PanelLabel>
                   <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
                     {deal.sponsor_overview}
                   </p>
-                </CardContent>
-              </Card>
-            )}
-            {deal.location_summary && (
-              <Card className="border-t-[3px] border-t-muted-foreground/30">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">Location Summary</CardTitle>
-                </CardHeader>
-                <CardContent>
+                </div>
+              )}
+              {deal.location_summary && (
+                <div className="p-6">
+                  <PanelLabel accent="bg-muted-foreground/40">Location Summary</PanelLabel>
                   <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
                     {deal.location_summary}
                   </p>
-                </CardContent>
-              </Card>
-            )}
-          </div>
+                </div>
+              )}
+            </div>
+          </Card>
         )}
 
-        {/* Section 5: Actions */}
-        <Card>
-          <CardContent className="p-6 flex items-center gap-3">
+        {/* ── Section 5: Actions ─────────────────────────────────────────── */}
+        <Card className="overflow-hidden">
+          <SectionHeader>Actions</SectionHeader>
+          <CardContent className="px-6 py-4 flex items-center gap-3">
             <Button
               onClick={handleDownload}
               disabled={!deal.screener_s3_key}
@@ -385,9 +426,10 @@ const DealDetail = () => {
             )}
           </CardContent>
         </Card>
+
       </div>
 
-      {/* Email Preview Modal */}
+      {/* ── Email Preview Modal ──────────────────────────────────────────── */}
       {deal.screening_email_draft && (
         <Dialog open={emailModalOpen} onOpenChange={setEmailModalOpen}>
           <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
