@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import EmailRow from "@/components/EmailRow";
 import EmailDetail from "@/components/EmailDetail";
-import { mockEmails, type Email } from "@/data/mockEmails";
+import type { Email } from "@/data/mockEmails";
 import { emailsApi, gmailApi, type ApiEmailDetail, type ApiDashboardStats } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
@@ -150,11 +150,11 @@ const Dashboard = () => {
         }
         prefetchBodies(converted);
       } else if (!isBackground) {
-        setEmails(mockEmails);
+        setEmails([]);
         setNextPageToken(null);
-        setSelectedId((prev) => prev ?? mockEmails[0]?.id ?? null);
+        setSelectedId(null);
         _cache = {
-          emails: mockEmails,
+          emails: [],
           nextPageToken: null,
           gmailConnected: connected,
           stats: statsRes,
@@ -193,8 +193,8 @@ const Dashboard = () => {
       } catch {
         setGmailConnected(false);
         if (!isCacheFresh()) {
-          setEmails(mockEmails);
-          setSelectedId((prev) => prev ?? mockEmails[0]?.id ?? null);
+          setEmails([]);
+          setSelectedId(null);
         }
       } finally {
         setLoading(false);
@@ -522,6 +522,25 @@ const Dashboard = () => {
                   </div>
                 )}
               </>
+            ) : gmailConnected === false && !isSearchMode ? (
+              <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-4 px-8 text-center">
+                <Mail className="h-10 w-10 opacity-30" />
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-foreground/70">Gmail not connected</p>
+                  <p className="text-xs leading-relaxed">
+                    Connect your Gmail account to start seeing deal emails here.
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => navigate("/settings")}
+                  className="text-xs gap-2 border-primary/30 text-primary hover:bg-primary/5 hover:border-primary"
+                >
+                  <Mail className="h-3.5 w-3.5" />
+                  Connect Gmail in Settings
+                </Button>
+              </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
                 <SearchX className="h-8 w-8 opacity-40" />
@@ -546,16 +565,22 @@ const Dashboard = () => {
             />
           ) : gmailConnected === false ? (
             <div className="flex-1 flex items-center justify-center">
-              <div className="flex flex-col items-center gap-4 text-muted-foreground max-w-xs text-center">
-                <Mail className="h-12 w-12 opacity-30" />
-                <p className="text-sm">Connect your Gmail to see deal emails in your inbox</p>
+              <div className="flex flex-col items-center gap-5 text-muted-foreground max-w-sm text-center">
+                <div className="rounded-full bg-primary/5 p-5 border border-primary/10">
+                  <Mail className="h-10 w-10 text-primary/40" />
+                </div>
+                <div className="space-y-2">
+                  <p className="text-base font-semibold text-foreground/80">Connect your Gmail account</p>
+                  <p className="text-sm leading-relaxed">
+                    To view and screen deal emails, please connect your Gmail account in Settings.
+                  </p>
+                </div>
                 <Button
-                  size="sm"
-                  variant="outline"
                   onClick={() => navigate("/settings")}
-                  className="text-xs"
+                  className="gap-2"
                 >
-                  Go to Settings
+                  <Mail className="h-4 w-4" />
+                  Go to Settings to Connect Gmail
                 </Button>
               </div>
             </div>
