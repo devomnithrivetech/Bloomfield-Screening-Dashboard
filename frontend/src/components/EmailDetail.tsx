@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Paperclip, Table2, Download, CheckCircle2, Loader2, ArrowRight, FileText,
-  Upload, X, FileSpreadsheet, AlertCircle,
+  Upload, X, FileSpreadsheet, AlertCircle, GripHorizontal,
 } from "lucide-react";
 import { emailsApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
 import type { Email } from "@/data/mockEmails";
 import { cn } from "@/lib/utils";
 
@@ -76,21 +77,12 @@ interface EmailDetailProps {
   onSendForProcessing: (id: string, extraFiles: File[], instructions: string) => void;
 }
 
-const generateSummary = (email: Email): string => {
-  const senderName = email.sender.split(",")[0];
-  const attachmentInfo = email.attachments.length > 0
-    ? `\n\nAttachments: ${email.attachments.map(a => a.filename).join(", ")}`
-    : "\n\nNo attachments included.";
-  const lines = email.body.split("\n").filter(l => l.trim());
-  const bulletPoints = lines.filter(l => l.trim().startsWith("•")).slice(0, 4).join("\n");
-  return `${senderName} is presenting a financing opportunity regarding "${email.subject.split("—")[1]?.trim() || email.subject}".\n\n${bulletPoints ? `Key metrics:\n${bulletPoints}` : lines.slice(1, 3).join(" ")}${attachmentInfo}`;
-};
-
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 const EmailDetail = ({ email, onSendForProcessing }: EmailDetailProps) => {
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   // Confirm-processing dialog state
   const [showConfirm, setShowConfirm]         = useState(false);
@@ -101,13 +93,19 @@ const EmailDetail = ({ email, onSendForProcessing }: EmailDetailProps) => {
   const fileInputRef                          = useRef<HTMLInputElement>(null);
 
   // Summarise state
-  const [summarizeState, setSummarizeState] = useState<"idle" | "loading" | "ready">("idle");
-  const [showSummary, setShowSummary]       = useState(false);
-  const [pendingUrl, setPendingUrl]         = useState<string | null>(null);
+  const [summarizeState, setSummarizeState]   = useState<"idle" | "loading" | "ready">("idle");
+  const [summary, setSummary]                 = useState<string | null>(null);
+  const [showSummary, setShowSummary]         = useState(false);
+  const [summaryPos, setSummaryPos]           = useState({ x: 0, y: 0 });
+  const dragState                             = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
+
+  // External link interception from sandboxed iframe
+  const [pendingUrl, setPendingUrl]           = useState<string | null>(null);
 
   // Reset summarize when email changes
   useEffect(() => {
     setSummarizeState("idle");
+    setSummary(null);
     setShowSummary(false);
   }, [email.id]);
 
@@ -171,14 +169,67 @@ const EmailDetail = ({ email, onSendForProcessing }: EmailDetailProps) => {
     setShowConfirm(false);
   };
 
-  const handleSummarize = () => {
-    if (summarizeState === "idle") {
-      setSummarizeState("loading");
-      setTimeout(() => setSummarizeState("ready"), 2000);
-    } else if (summarizeState === "ready") {
+  // ── Summary drag handlers ─────────────────────────────────────────────────
+  const onSummaryDragStart = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    dragState.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      origX: summaryPos.x,
+      origY: summaryPos.y,
+    };
+
+    const onMove = (ev: MouseEvent) => {
+      if (!dragState.current) return;
+      setSummaryPos({
+        x: Math.max(0, dragState.current.origX + ev.clientX - dragState.current.startX),
+        y: Math.max(0, dragState.current.origY + ev.clientY - dragState.current.startY),
+      });
+    };
+
+    const onUp = () => {
+      dragState.current = null;
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }, [summaryPos.x, summaryPos.y]);
+
+  // ── Summarise handler ─────────────────────────────────────────────────────
+  const handleSummarize = useCallback(async () => {
+    // If already loaded, just (re)show the window
+    if (summarizeState === "ready" && summary) {
+      setSummaryPos({
+        x: Math.max(window.innerWidth - 450, 20),
+        y: 80,
+      });
       setShowSummary(true);
+      return;
     }
-  };
+
+    if (summarizeState !== "idle") return;
+
+    setSummarizeState("loading");
+    try {
+      const { summary: text } = await emailsApi.summarize(email.id);
+      setSummary(text || "No summary could be generated.");
+      setSummarizeState("ready");
+      setSummaryPos({
+        x: Math.max(window.innerWidth - 450, 20),
+        y: 80,
+      });
+      setShowSummary(true);
+    } catch {
+      setSummarizeState("idle");
+      toast({
+        title: "Summary failed",
+        description: "Could not generate a summary. Please try again.",
+        variant: "destructive",
+      });
+    }
+  }, [summarizeState, summary, email.id, toast]);
 
   const summarizeBtn = (
     <Button
@@ -450,7 +501,7 @@ const EmailDetail = ({ email, onSendForProcessing }: EmailDetailProps) => {
         </DialogContent>
       </Dialog>
 
-      {/* External Link Confirmation */}
+      {/* ── External Link Confirmation ─────────────────────────────────────── */}
       <AlertDialog open={!!pendingUrl} onOpenChange={(open) => { if (!open) setPendingUrl(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -475,20 +526,50 @@ const EmailDetail = ({ email, onSendForProcessing }: EmailDetailProps) => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Summary Dialog */}
-      <Dialog open={showSummary} onOpenChange={setShowSummary}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Email Summary</DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground">
-              AI-generated summary of this email
-            </DialogDescription>
-          </DialogHeader>
-          <div className="whitespace-pre-line text-sm text-foreground leading-relaxed mt-2">
-            {generateSummary(email)}
+      {/* ── Draggable Summary Window (no backdrop blur) ────────────────────── */}
+      {showSummary && summary && (
+        <div
+          style={{
+            position: "fixed",
+            left: summaryPos.x,
+            top: summaryPos.y,
+            width: 400,
+            zIndex: 9999,
+          }}
+          className="rounded-xl border border-border bg-card shadow-2xl flex flex-col"
+        >
+          {/* Drag handle / header */}
+          <div
+            className="flex items-center justify-between px-4 py-3 border-b border-border cursor-grab active:cursor-grabbing select-none rounded-t-xl bg-muted/40"
+            onMouseDown={onSummaryDragStart}
+          >
+            <div className="flex items-center gap-2">
+              <GripHorizontal className="h-3.5 w-3.5 text-muted-foreground/50" />
+              <span className="text-sm font-semibold text-foreground">Email Summary</span>
+            </div>
+            <button
+              onClick={() => setShowSummary(false)}
+              className="rounded p-0.5 hover:bg-destructive/10 hover:text-destructive transition-colors text-muted-foreground"
+              aria-label="Close summary"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
-        </DialogContent>
-      </Dialog>
+
+          {/* Scrollable content */}
+          <div
+            className="overflow-y-auto px-4 py-3 text-sm text-foreground leading-relaxed"
+            style={{ maxHeight: 280 }}
+          >
+            {summary}
+          </div>
+
+          {/* Footer hint */}
+          <div className="px-4 py-2 border-t border-border rounded-b-xl">
+            <p className="text-[11px] text-muted-foreground">AI-generated · drag to move · cached after first load</p>
+          </div>
+        </div>
+      )}
     </>
   );
 };

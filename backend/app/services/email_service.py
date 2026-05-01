@@ -118,8 +118,100 @@ async def get_email(user_id: str, email_id: str) -> EmailDetail | None:
 
 
 async def ai_summarize(user_id: str, email_id: str) -> str:
-    _ = (user_id, email_id)
-    return ""
+    """Return a brief AI-generated summary of a Gmail email.
+
+    First checks the emails table for a cached summary; on a cache miss it
+    fetches the email from Gmail, calls the summarize agent, persists the
+    result, and returns it.  Never raises — callers receive an empty string
+    on any failure.
+    """
+    from datetime import datetime, timezone as tz
+    from app.integrations.supabase import get_supabase
+    from app.agents.summarize import summarize_email
+
+    supabase = get_supabase()
+
+    # ── 1. Cache check ─────────────────────────────────────────────────────────
+    existing_db_id: str | None = None
+    try:
+        resp = (
+            supabase.table("emails")
+            .select("id, summary")
+            .eq("user_id", user_id)
+            .eq("gmail_message_id", email_id)
+            .limit(1)
+            .execute()
+        )
+        if resp.data:
+            row = resp.data[0]
+            existing_db_id = row["id"]
+            if row.get("summary"):
+                return row["summary"]
+    except Exception as exc:
+        log.warning("ai_summarize_cache_check_failed", email_id=email_id, error=str(exc))
+
+    # ── 2. Fetch email from Gmail ───────────────────────────────────────────────
+    credentials = await _get_credentials(user_id)
+    if credentials is None:
+        log.warning("ai_summarize_no_credentials", user_id=user_id)
+        return ""
+
+    try:
+        email = await get_message_detail(credentials, email_id)
+    except Exception as exc:
+        log.warning("ai_summarize_fetch_failed", email_id=email_id, error=str(exc))
+        return ""
+
+    if email is None:
+        return ""
+
+    # ── 3. Call LLM ────────────────────────────────────────────────────────────
+    body_text = email.body_text or ""
+    attachment_names = [a.filename for a in (email.attachments or [])]
+    sender_label = (
+        f"{email.sender} <{email.sender_email}>"
+        if email.sender_email
+        else email.sender
+    )
+
+    summary = await summarize_email(
+        subject=email.subject,
+        sender=sender_label,
+        body_text=body_text,
+        attachment_names=attachment_names,
+    )
+
+    if not summary:
+        return ""
+
+    # ── 4. Persist to emails table ─────────────────────────────────────────────
+    try:
+        if existing_db_id:
+            supabase.table("emails").update({"summary": summary}).eq(
+                "id", existing_db_id
+            ).execute()
+        else:
+            received = (
+                email.received_at.isoformat()
+                if email.received_at
+                else datetime.now(tz.utc).isoformat()
+            )
+            supabase.table("emails").insert({
+                "user_id":          user_id,
+                "gmail_message_id": email_id,
+                "sender":           email.sender,
+                "subject":          email.subject,
+                "body_text":        body_text[:50_000],  # store body for future use
+                "received_at":      received,
+                "status":           "unprocessed",
+                "attachments":      [],
+                "summary":          summary,
+            }).execute()
+    except Exception as exc:
+        log.warning("ai_summarize_store_failed", email_id=email_id, error=str(exc))
+        # Non-fatal — still return the summary we computed
+
+    return summary
 
 
 async def sync_gmail_inbox(user_id: str) -> int:

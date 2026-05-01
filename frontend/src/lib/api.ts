@@ -133,6 +133,8 @@ export const emailsApi = {
   attachmentUrl: (emailId: string, attachmentId: string, filename: string) =>
     `${API_BASE}/api/emails/${emailId}/attachments/${attachmentId}?filename=${encodeURIComponent(filename)}`,
   stats: () => apiFetch<ApiDashboardStats>("/api/emails/stats"),
+  summarize: (emailId: string) =>
+    apiFetch<{ summary: string }>(`/api/emails/${emailId}/summarize`, { method: "POST" }),
 };
 
 // ---------------------------------------------------------------------------
