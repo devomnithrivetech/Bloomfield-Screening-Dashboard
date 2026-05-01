@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     api_host: str = "0.0.0.0"
     api_port: int = 8000
-    cors_origins: str = "http://localhost:8080"
+    cors_origins: str = ""
 
     engagement_option: EngagementOption = EngagementOption.CLOSED
 
@@ -39,7 +39,7 @@ class Settings(BaseSettings):
 
     google_client_id: str = ""
     google_client_secret: str = ""
-    google_oauth_redirect_uri: str = "http://localhost:8000/api/auth/google/callback"
+    google_oauth_redirect_uri: str = ""
 
     @property
     def google_oauth_redirect_uri_clean(self) -> str:
@@ -55,6 +55,12 @@ class Settings(BaseSettings):
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def frontend_url(self) -> str:
+        """Primary frontend origin, derived from CORS_ORIGINS."""
+        origins = self.cors_origins_list
+        return origins[0] if origins else "http://localhost:8080"
 
     @property
     def agentic_enabled(self) -> bool:

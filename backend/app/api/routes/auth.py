@@ -21,8 +21,6 @@ from app.integrations.gmail import (
 
 router = APIRouter()
 
-_FRONTEND_SETTINGS = "http://localhost:8080/settings"
-
 
 # ---------------------------------------------------------------------------
 # HMAC-signed OAuth state — binds the OAuth callback to the initiating user
@@ -79,12 +77,14 @@ async def google_oauth_callback(code: str, state: str | None = None) -> Redirect
     """Exchange auth code for tokens, persist to Supabase, redirect to frontend."""
     settings = get_settings()
 
+    frontend_settings = f"{settings.frontend_url}/settings"
+
     if settings.multi_user_enabled:
         if not state:
-            return RedirectResponse(url=f"{_FRONTEND_SETTINGS}?gmail=error&reason=missing_state")
+            return RedirectResponse(url=f"{frontend_settings}?gmail=error&reason=missing_state")
         user_id = _verify_state(state, settings.supabase_jwt_secret)
         if not user_id:
-            return RedirectResponse(url=f"{_FRONTEND_SETTINGS}?gmail=error&reason=invalid_state")
+            return RedirectResponse(url=f"{frontend_settings}?gmail=error&reason=invalid_state")
     else:
         user_id = "single-user"
 
@@ -97,7 +97,7 @@ async def google_oauth_callback(code: str, state: str | None = None) -> Redirect
         pass
 
     await save_token(user_id, token_data)
-    return RedirectResponse(url=f"{_FRONTEND_SETTINGS}?gmail=connected")
+    return RedirectResponse(url=f"{frontend_settings}?gmail=connected")
 
 
 @router.post("/google/disconnect")
