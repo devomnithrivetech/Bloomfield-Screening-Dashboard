@@ -4,7 +4,8 @@
       "Bash(npx tsc *)",
       "Bash(xargs grep *)",
       "Bash(pip install *)",
-      "Bash(python -c \"import docx; print\\('python-docx', docx.__version__\\)\")"
+      "Bash(python -c \"import docx; print\\('python-docx', docx.__version__\\)\")",
+      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")"
     ]
   }
 }

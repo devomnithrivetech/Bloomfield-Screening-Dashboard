@@ -51,12 +51,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
 
       async signUp(email, password, fullName) {
+        const siteUrl = import.meta.env.VITE_SITE_URL || window.location.origin;
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: fullName ? { full_name: fullName } : undefined,
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
+            emailRedirectTo: `${siteUrl}/auth/callback`,
           },
         });
         const needsConfirmation = !data.session && !error;
@@ -68,8 +69,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
 
       async resetPassword(email) {
+        const siteUrl = import.meta.env.VITE_SITE_URL || window.location.origin;
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/auth/reset-password`,
+          redirectTo: `${siteUrl}/auth/reset-password`,
         });
         return { error: error?.message ?? null };
       },
