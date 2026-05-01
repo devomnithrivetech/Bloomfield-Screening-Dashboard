@@ -4,7 +4,7 @@ from __future__ import annotations
 import io
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 
 from app.core.security import get_current_user
@@ -17,6 +17,7 @@ from app.schemas.email import (
     BatchEmailRequest,
     EmailDetail,
     EmailListResponse,
+    ProcessEmailRequest,
     ProcessEmailResponse,
 )
 from app.services import deal_service, email_service
@@ -24,39 +25,25 @@ from app.services import deal_service, email_service
 router = APIRouter()
 
 
-def _upsert_screened_stub(user_id: str, gmail_message_id: str) -> None:
-    """Create or refresh a 'queued' screened_emails row so it appears in the
-    Screening Queue page immediately — before the pipeline even starts."""
+def _upsert_screened_stub(
+    user_id: str,
+    gmail_message_id: str,
+    meta: ProcessEmailRequest,
+) -> None:
+    """Create or refresh screened_emails + emails rows immediately so the card
+    appears in the Screening Queue and the inbox shows 'Processing' before the
+    background pipeline starts. Uses metadata sent by the frontend."""
     supabase = get_supabase()
     now = datetime.now(timezone.utc).isoformat()
 
-    # Try to pull subject/sender from the emails table (populated on inbox sync)
-    subject, sender, sender_email, received_at = "(loading…)", "Loading…", None, now
-    try:
-        row = (
-            supabase.table("emails")
-            .select("subject, sender, sender_email, received_at")
-            .eq("user_id", user_id)
-            .eq("gmail_message_id", gmail_message_id)
-            .limit(1)
-            .execute()
-        )
-        if row.data:
-            r = row.data[0]
-            subject     = r.get("subject")     or subject
-            sender      = r.get("sender")      or sender
-            sender_email = r.get("sender_email")
-            received_at = r.get("received_at") or received_at
-    except Exception:
-        pass
-
+    # ── screened_emails card ────────────────────────────────────────────────
     stub: dict = {
         "user_id":               user_id,
         "gmail_message_id":      gmail_message_id,
-        "subject":               subject,
-        "sender":                sender,
-        "sender_email":          sender_email,
-        "received_at":           received_at,
+        "subject":               meta.subject,
+        "sender":                meta.sender,
+        "sender_email":          meta.sender_email,
+        "received_at":           meta.received_at or now,
         "sent_for_screening_at": now,
         "processing_status":     "queued",
         "pipeline":              [],
@@ -74,6 +61,36 @@ def _upsert_screened_stub(user_id: str, gmail_message_id: str) -> None:
             supabase.table("screened_emails").update(stub).eq("id", existing.data[0]["id"]).execute()
         else:
             supabase.table("screened_emails").insert(stub).execute()
+    except Exception:
+        pass
+
+    # ── emails table — set status=processing immediately ───────────────────
+    # This ensures the inbox overlay shows "Processing" on the next poll even
+    # before the background task has a chance to run _mark_email_processing.
+    email_row: dict = {
+        "user_id":          user_id,
+        "gmail_message_id": gmail_message_id,
+        "sender":           meta.sender,
+        "subject":          meta.subject,
+        "received_at":      meta.received_at or now,
+        "status":           "processing",
+        "attachments":      [],
+    }
+    try:
+        existing_email = (
+            supabase.table("emails")
+            .select("id")
+            .eq("user_id", user_id)
+            .eq("gmail_message_id", gmail_message_id)
+            .limit(1)
+            .execute()
+        )
+        if existing_email.data:
+            supabase.table("emails").update({"status": "processing"}).eq(
+                "id", existing_email.data[0]["id"]
+            ).execute()
+        else:
+            supabase.table("emails").insert(email_row).execute()
     except Exception:
         pass
 
@@ -188,10 +205,12 @@ async def summarize_email(
 async def process_email(
     email_id: str,
     background_tasks: BackgroundTasks,
+    meta: ProcessEmailRequest = Body(default_factory=ProcessEmailRequest),
     user: dict = Depends(get_current_user),
 ) -> ProcessEmailResponse:
-    # Insert the screened_emails stub NOW so the card is visible immediately.
-    _upsert_screened_stub(user["id"], email_id)
+    # Write the screened_emails card NOW (with real subject/sender from the frontend)
+    # so it appears in the Screening Queue before the background pipeline starts.
+    _upsert_screened_stub(user["id"], email_id, meta)
     # Run the full pipeline in the background — response returns immediately.
     background_tasks.add_task(deal_service.start_screening, user["id"], email_id)
     return ProcessEmailResponse(deal_id=None, status="processing")

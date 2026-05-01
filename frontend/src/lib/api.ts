@@ -92,8 +92,14 @@ export const emailsApi = {
       method: "POST",
       body: JSON.stringify({ ids }),
     }),
-  process: (emailId: string) =>
-    apiFetch<ProcessEmailResponse>(`/api/emails/${emailId}/process`, { method: "POST" }),
+  process: (
+    emailId: string,
+    meta?: { subject?: string; sender?: string; sender_email?: string; received_at?: string },
+  ) =>
+    apiFetch<ProcessEmailResponse>(`/api/emails/${emailId}/process`, {
+      method: "POST",
+      body: JSON.stringify(meta ?? {}),
+    }),
   attachmentUrl: (emailId: string, attachmentId: string, filename: string) =>
     `${API_BASE}/api/emails/${emailId}/attachments/${attachmentId}?filename=${encodeURIComponent(filename)}`,
   stats: () => apiFetch<ApiDashboardStats>("/api/emails/stats"),
@@ -146,7 +152,8 @@ export interface ApiDealDetail {
 
 export const dealsApi = {
   get: (dealId: string) => apiFetch<ApiDealDetail>(`/api/deals/${dealId}`),
-  screenerUrl: (dealId: string) => `${API_BASE}/api/deals/${dealId}/screener`,
+  getScreenerDownloadUrl: (dealId: string) =>
+    apiFetch<{ url: string }>(`/api/deals/${dealId}/screener`),
 };
 
 // ---------------------------------------------------------------------------
@@ -181,7 +188,52 @@ export interface ScreenedEmail {
 
 export const screenedApi = {
   list: () => apiFetch<ScreenedEmail[]>("/api/screened"),
-  screenerUrl: (dealId: string) => `${API_BASE}/api/deals/${dealId}/screener`,
+};
+
+// ---------------------------------------------------------------------------
+// Manual uploads
+// ---------------------------------------------------------------------------
+export interface UploadDealResponse {
+  screened_email_id: string;
+  email_id: string;
+  status: string;
+}
+
+export interface UploadDealMeta {
+  subject?: string;
+  sender?: string;
+  sender_email?: string;
+  body_text?: string;
+}
+
+export const uploadsApi = {
+  /**
+   * Upload deal documents directly from the user's device.
+   * Uses multipart/form-data — bypasses apiFetch which forces application/json.
+   */
+  upload: async (files: File[], meta: UploadDealMeta): Promise<UploadDealResponse> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const form = new FormData();
+    files.forEach((f) => form.append("files", f));
+    if (meta.subject)      form.append("subject",      meta.subject);
+    if (meta.sender)       form.append("sender",       meta.sender);
+    if (meta.sender_email) form.append("sender_email", meta.sender_email);
+    if (meta.body_text)    form.append("body_text",    meta.body_text);
+
+    const headers: Record<string, string> = {};
+    if (session?.access_token) headers["Authorization"] = `Bearer ${session.access_token}`;
+
+    const res = await fetch(`${API_BASE}/api/uploads`, {
+      method: "POST",
+      headers,
+      body: form,
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`API ${res.status}: /api/uploads — ${text}`);
+    }
+    return res.json() as Promise<UploadDealResponse>;
+  },
 };
 
 // ---------------------------------------------------------------------------

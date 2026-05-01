@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { screenedApi, type ScreenedEmail, type ApiPipelineStage } from "@/lib/api";
+import { screenedApi, dealsApi, type ScreenedEmail, type ApiPipelineStage } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -95,8 +95,13 @@ function formatDateTime(iso: string | null): string {
   });
 }
 
-/** Returns the most relevant date for filtering/sorting. */
-function entryDate(e: ScreenedEmail): Date {
+/** Date used for date-preset filters — when screening was initiated. */
+function screeningDate(e: ScreenedEmail): Date {
+  return new Date(e.sent_for_screening_at ?? e.created_at);
+}
+
+/** Date used for sort order — the original email received date. */
+function emailDate(e: ScreenedEmail): Date {
   return new Date(e.received_at ?? e.sent_for_screening_at ?? e.created_at);
 }
 
@@ -210,7 +215,14 @@ function ScreenedCard({ entry }: { entry: ScreenedEmail }) {
                 size="sm"
                 variant="outline"
                 className="gap-1.5 text-xs"
-                onClick={() => window.open(screenedApi.screenerUrl(entry.deal_id!), "_blank")}
+                onClick={async () => {
+                  try {
+                    const { url } = await dealsApi.getScreenerDownloadUrl(entry.deal_id!);
+                    window.open(url, "_blank");
+                  } catch {
+                    // silently ignore
+                  }
+                }}
               >
                 <Download className="h-3.5 w-3.5" />
                 Download Screener
@@ -322,11 +334,11 @@ const ScreenedEmails = () => {
       });
     }
 
-    // Date filter
+    // Date filter — based on when screening was initiated
     if (datePreset === "today") {
       const start = new Date();
       start.setHours(0, 0, 0, 0);
-      result = result.filter((e) => entryDate(e) >= start);
+      result = result.filter((e) => screeningDate(e) >= start);
     } else if (datePreset === "this_week") {
       const start = new Date();
       // Normalise to Monday of the current week
@@ -334,28 +346,28 @@ const ScreenedEmails = () => {
       const diff = day === 0 ? -6 : 1 - day;
       start.setDate(start.getDate() + diff);
       start.setHours(0, 0, 0, 0);
-      result = result.filter((e) => entryDate(e) >= start);
+      result = result.filter((e) => screeningDate(e) >= start);
     } else if (datePreset === "specific" && specificDate) {
       const start = new Date(specificDate + "T00:00:00");
       const end   = new Date(specificDate + "T23:59:59");
       result = result.filter((e) => {
-        const d = entryDate(e);
+        const d = screeningDate(e);
         return d >= start && d <= end;
       });
     } else if (datePreset === "range") {
       if (dateFrom) {
         const start = new Date(dateFrom + "T00:00:00");
-        result = result.filter((e) => entryDate(e) >= start);
+        result = result.filter((e) => screeningDate(e) >= start);
       }
       if (dateTo) {
         const end = new Date(dateTo + "T23:59:59");
-        result = result.filter((e) => entryDate(e) <= end);
+        result = result.filter((e) => screeningDate(e) <= end);
       }
     }
 
-    // Sort
+    // Sort — based on original email received date
     result.sort((a, b) => {
-      const diff = entryDate(a).getTime() - entryDate(b).getTime();
+      const diff = emailDate(a).getTime() - emailDate(b).getTime();
       return sortOrder === "newest" ? -diff : diff;
     });
 

@@ -52,7 +52,13 @@ class AISummarizeResponse(BaseModel):
 
 
 class ProcessEmailRequest(BaseModel):
-    email_id: str
+    """Optional metadata the frontend sends along with the process request.
+    All fields have sensible defaults so the endpoint is backwards-compatible
+    with callers that send no body."""
+    subject:      str       = "(no subject)"
+    sender:       str       = "Unknown"
+    sender_email: str | None = None
+    received_at:  str | None = None
 
 
 class ProcessEmailResponse(BaseModel):

@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import RedirectResponse
 
 from app.core.security import get_current_user
 from app.schemas.deal import DealDetail, DealListResponse, KPIStats
@@ -33,8 +32,8 @@ async def get_deal(deal_id: str, user: dict = Depends(get_current_user)) -> Deal
 async def download_screener(
     deal_id: str,
     user: dict = Depends(get_current_user),
-) -> RedirectResponse:
-    """Redirect to a 1-hour pre-signed S3 URL for the generated screener Excel."""
+) -> dict:
+    """Return a 1-hour pre-signed S3 URL for downloading the screener Excel."""
     deal = await deal_service.get_deal(user["id"], deal_id)
     if deal is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="deal not found")
@@ -45,7 +44,7 @@ async def download_screener(
         )
     from app.agents.demo import get_screener_presigned_url
     url = await get_screener_presigned_url(deal.screener_s3_key)
-    return RedirectResponse(url=url, status_code=302)
+    return {"url": url}
 
 
 @router.post("/{deal_id}/send-email")

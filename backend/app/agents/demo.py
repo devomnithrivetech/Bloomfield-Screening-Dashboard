@@ -7,8 +7,8 @@ Flow per email:
   4. Extract text from PDFs (pdfplumber) and Excel files (openpyxl).
   5. Call Claude with the analyst+screener system prompt and all document text.
   6. Parse the structured tool-use response.
-  7. Populate the Excel screener template (openpyxl) and inject Deal Summary
-     text boxes (xlsxwriter + ZIP/XML method).
+  7. Populate the Excel screener template (openpyxl), writing Deal Summary
+     text directly into the template's styled cells (B8, B13).
   8. Upload the finished Excel to S3 under {gmail_message_id}/Screener_*.xlsx.
   9. Persist the deal record and email record to Supabase.
  10. Return the deal_id (UUID string).
@@ -20,7 +20,6 @@ import base64
 import io
 import re
 import uuid
-import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -28,9 +27,6 @@ from typing import Any
 import boto3
 import openpyxl
 import pdfplumber
-import xlsxwriter
-from lxml import etree
-
 from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.core.token_store import load_token
@@ -480,8 +476,127 @@ SCREENER_TOOL: dict[str, Any] = {
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  PUBLIC ENTRY POINT
+#  PUBLIC ENTRY POINTS
 # ─────────────────────────────────────────────────────────────────────────────
+
+async def run_manual_upload_screening(
+    user_id: str,
+    email_id: str,
+    screened_email_id: str,
+    raw_attachments: list[dict[str, Any]],
+    email_meta: dict[str, Any],
+) -> str:
+    """Process a manually-uploaded deal and return the deal_id (UUID string).
+
+    Skips all Gmail I/O — attachments are already in memory from the upload
+    request.  Uses screened_email_id (the PK of the screened_emails row) as the
+    pipeline correlation key instead of gmail_message_id.
+    """
+    settings = get_settings()
+    supabase = get_supabase()
+    loop = asyncio.get_event_loop()
+
+    # email_id (internal UUID) doubles as the S3 folder prefix for uploads
+    s3_folder = email_id
+
+    # Initialise pipeline stages on the pre-created screened_emails stub
+    _init_manual_screened_email(supabase, screened_email_id)
+
+    try:
+        # Advance: email_received → complete, parsing_attachments → in_progress
+        _advance_stage_by_id(
+            supabase, screened_email_id,
+            new_status="parsing_attachments",
+            completing="email_received",
+            next_stage="parsing_attachments",
+        )
+
+        # Upload raw attachments to S3 (best-effort — pipeline continues on failure)
+        try:
+            s3_attachment_keys = await loop.run_in_executor(
+                None, _upload_attachments_sync, s3_folder, raw_attachments, settings
+            )
+        except Exception as exc:
+            log.warning("manual_upload_s3_skipped", error=str(exc))
+            s3_attachment_keys = []
+
+        # Record S3 keys on the emails row so the row is queryable later
+        try:
+            supabase.table("emails").update({
+                "attachments": [
+                    {"filename": k["filename"], "s3_key": k["s3_key"], "type": k["type"]}
+                    for k in s3_attachment_keys
+                ]
+            }).eq("id", email_id).execute()
+        except Exception as exc:
+            log.warning("manual_upload_attachments_update_failed", error=str(exc))
+
+        # Extract text from PDFs / Excel files
+        doc_text_blocks = _build_document_text_blocks(raw_attachments)
+
+        _advance_stage_by_id(
+            supabase, screened_email_id,
+            new_status="extracting_financials",
+            completing="parsing_attachments",
+            next_stage="extracting_financials",
+        )
+
+        # Build a lightweight email_detail object for _call_claude
+        from types import SimpleNamespace
+        email_detail = SimpleNamespace(
+            sender=email_meta.get("sender") or "Manual Upload",
+            sender_email=email_meta.get("sender_email"),
+            subject=email_meta.get("subject") or "Manual Upload",
+            received_at=datetime.now(timezone.utc),
+            body_text=email_meta.get("body_text"),
+            attachments=[],
+        )
+
+        log.info("manual_upload_calling_claude", email_id=email_id)
+        result = await _call_claude(email_detail, doc_text_blocks, settings)
+
+        _advance_stage_by_id(
+            supabase, screened_email_id,
+            new_status="running_screener",
+            completing="extracting_financials",
+            next_stage="running_screener",
+        )
+
+        # Generate Excel screener
+        deal_id = str(uuid.uuid4())
+        screener_s3_key: str | None = None
+        try:
+            excel_bytes = _generate_excel_screener(result, settings.screener_template_path)
+            prop_name = (result.get("property_info") or {}).get("property_name", "deal")
+            safe_name = re.sub(r"[^\w\-]", "_", prop_name).strip("_")[:50]
+            screener_s3_key = f"{s3_folder}/Screener_{safe_name}.xlsx"
+            await loop.run_in_executor(
+                None, _s3_put_bytes,
+                screener_s3_key, excel_bytes,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                settings,
+            )
+            log.info("manual_upload_screener_uploaded", s3_key=screener_s3_key)
+        except Exception as exc:
+            log.warning("manual_upload_screener_failed", error=str(exc))
+
+        # Persist deal + mark screened_emails complete
+        _persist_manual_upload_to_supabase(
+            supabase, user_id, deal_id, email_id, screened_email_id,
+            result, screener_s3_key, s3_attachment_keys, email_detail, s3_folder,
+        )
+        log.info("manual_upload_screening_complete", deal_id=deal_id)
+        return deal_id
+
+    except Exception as exc:
+        log.error("manual_upload_screening_failed", email_id=email_id, error=str(exc))
+        _fail_screened_email_by_id(supabase, screened_email_id, str(exc))
+        try:
+            supabase.table("emails").update({"status": "failed"}).eq("id", email_id).execute()
+        except Exception:
+            pass
+        raise
+
 
 async def run_demo_screening(user_id: str, gmail_message_id: str) -> str:
     """Process a deal email end-to-end and return the deal_id (UUID string).
@@ -505,77 +620,312 @@ async def run_demo_screening(user_id: str, gmail_message_id: str) -> str:
         raise RuntimeError("Gmail not connected — cannot fetch email for processing")
     creds = credentials_from_token_data(token_data)
 
-    # 3. Fetch full email from Gmail
-    email_detail = await get_message_detail(creds, gmail_message_id)
-    if email_detail is None:
-        raise RuntimeError(f"Gmail message {gmail_message_id} not found")
-
-    # Mark processing immediately so the dashboard shows the right state even if
-    # the user navigates away before the LLM call completes.
-    _mark_email_processing(supabase, user_id, gmail_message_id, email_detail)
-
-    # 4. Download attachments
-    raw_attachments: list[dict[str, Any]] = []
-    for att in email_detail.attachments:
-        if att.id:
-            try:
-                data = await download_attachment(creds, gmail_message_id, att.id)
-                raw_attachments.append({
-                    "id": att.id,
-                    "filename": att.filename,
-                    "type": att.type.value,
-                    "data": data,
-                })
-                log.info("attachment_downloaded", filename=att.filename, bytes=len(data))
-            except Exception as exc:
-                log.warning("attachment_download_failed", filename=att.filename, error=str(exc))
-
-    # 5. Upload raw attachments to S3 (best-effort — pipeline continues on failure)
-    loop = asyncio.get_event_loop()
     try:
-        s3_attachment_keys = await loop.run_in_executor(
-            None, _upload_attachments_sync, gmail_message_id, raw_attachments, settings
+        # 3. Fetch full email from Gmail
+        email_detail = await get_message_detail(creds, gmail_message_id)
+        if email_detail is None:
+            raise RuntimeError(f"Gmail message {gmail_message_id} not found")
+
+        # Writes status=processing to emails table and inits pipeline stages on
+        # the screened_emails row (email_received: in_progress, rest: pending).
+        _mark_email_processing(supabase, user_id, gmail_message_id, email_detail)
+
+        # 4. Download attachments  (email_received → complete, parsing_attachments → in_progress)
+        _advance_screened_email_stage(
+            supabase, user_id, gmail_message_id,
+            new_status="parsing_attachments",
+            completing="email_received",
+            next_stage="parsing_attachments",
         )
-    except Exception as exc:
-        log.warning("s3_attachments_skipped", error=str(exc))
-        s3_attachment_keys = []
+        loop = asyncio.get_event_loop()
+        raw_attachments: list[dict[str, Any]] = []
+        for att in email_detail.attachments:
+            if att.id:
+                try:
+                    data = await download_attachment(creds, gmail_message_id, att.id)
+                    raw_attachments.append({
+                        "id": att.id,
+                        "filename": att.filename,
+                        "type": att.type.value,
+                        "data": data,
+                    })
+                    log.info("attachment_downloaded", filename=att.filename, bytes=len(data))
+                except Exception as exc:
+                    log.warning("attachment_download_failed", filename=att.filename, error=str(exc))
 
-    # 6. Extract document text for Claude
-    doc_text_blocks = _build_document_text_blocks(raw_attachments)
+        # 5. Upload raw attachments to S3 (best-effort — pipeline continues on failure)
+        try:
+            s3_attachment_keys = await loop.run_in_executor(
+                None, _upload_attachments_sync, gmail_message_id, raw_attachments, settings
+            )
+        except Exception as exc:
+            log.warning("s3_attachments_skipped", error=str(exc))
+            s3_attachment_keys = []
 
-    # 7. Call Claude with the full analyst prompt
-    log.info("demo_calling_claude", gmail_message_id=gmail_message_id)
-    result = await _call_claude(email_detail, doc_text_blocks, settings)
-
-    # 8. Generate Excel screener
-    deal_id = str(uuid.uuid4())
-    screener_s3_key: str | None = None
-    try:
-        excel_bytes = _generate_excel_screener(result, settings.screener_template_path)
-        prop_name = (result.get("property_info") or {}).get("property_name", "deal")
-        safe_name = re.sub(r"[^\w\-]", "_", prop_name).strip("_")[:50]
-        screener_s3_key = f"{gmail_message_id}/Screener_{safe_name}.xlsx"
-        await loop.run_in_executor(
-            None, _s3_put_bytes,
-            screener_s3_key, excel_bytes,
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            settings,
+        # 6. Extract document text  (parsing_attachments → complete, extracting_financials → in_progress)
+        doc_text_blocks = _build_document_text_blocks(raw_attachments)
+        _advance_screened_email_stage(
+            supabase, user_id, gmail_message_id,
+            new_status="extracting_financials",
+            completing="parsing_attachments",
+            next_stage="extracting_financials",
         )
-        log.info("screener_uploaded", s3_key=screener_s3_key)
-    except Exception as exc:
-        log.warning("screener_generation_failed", error=str(exc))
 
-    # 9. Persist to Supabase
-    _persist_to_supabase(
-        supabase, user_id, deal_id, gmail_message_id,
-        result, screener_s3_key, s3_attachment_keys, email_detail,
-    )
-    log.info("demo_screening_complete", deal_id=deal_id)
-    return deal_id
+        # 7. Call Claude with the full analyst prompt
+        log.info("demo_calling_claude", gmail_message_id=gmail_message_id)
+        result = await _call_claude(email_detail, doc_text_blocks, settings)
+
+        # (extracting_financials → complete, running_screener → in_progress)
+        _advance_screened_email_stage(
+            supabase, user_id, gmail_message_id,
+            new_status="running_screener",
+            completing="extracting_financials",
+            next_stage="running_screener",
+        )
+
+        # 8. Generate Excel screener
+        deal_id = str(uuid.uuid4())
+        screener_s3_key: str | None = None
+        try:
+            excel_bytes = _generate_excel_screener(result, settings.screener_template_path)
+            prop_name = (result.get("property_info") or {}).get("property_name", "deal")
+            safe_name = re.sub(r"[^\w\-]", "_", prop_name).strip("_")[:50]
+            screener_s3_key = f"{gmail_message_id}/Screener_{safe_name}.xlsx"
+            await loop.run_in_executor(
+                None, _s3_put_bytes,
+                screener_s3_key, excel_bytes,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                settings,
+            )
+            log.info("screener_uploaded", s3_key=screener_s3_key)
+        except Exception as exc:
+            log.warning("screener_generation_failed", error=str(exc))
+
+        # 9. Persist to Supabase (calls _complete_screened_email internally)
+        _persist_to_supabase(
+            supabase, user_id, deal_id, gmail_message_id,
+            result, screener_s3_key, s3_attachment_keys, email_detail,
+        )
+        log.info("demo_screening_complete", deal_id=deal_id)
+        return deal_id
+
+    except Exception as exc:
+        log.error("demo_screening_failed", gmail_message_id=gmail_message_id, error=str(exc))
+        _fail_screened_email(supabase, user_id, gmail_message_id, str(exc))
+        raise
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  SUPABASE HELPERS
+#  SUPABASE HELPERS — manual-upload variants (lookup by screened_email_id PK)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _init_manual_screened_email(supabase: Any, screened_email_id: str) -> None:
+    """Set initial pipeline stages on a pre-created screened_emails row."""
+    now = datetime.now(timezone.utc).isoformat()
+    initial_pipeline = [
+        {"stage": "email_received",        "status": "in_progress", "started_at": now,  "finished_at": None},
+        {"stage": "parsing_attachments",   "status": "pending",     "started_at": None, "finished_at": None},
+        {"stage": "extracting_financials", "status": "pending",     "started_at": None, "finished_at": None},
+        {"stage": "running_screener",      "status": "pending",     "started_at": None, "finished_at": None},
+        {"stage": "complete",              "status": "pending",     "started_at": None, "finished_at": None},
+    ]
+    try:
+        supabase.table("screened_emails").update({
+            "processing_status": "email_received",
+            "pipeline":          initial_pipeline,
+        }).eq("id", screened_email_id).execute()
+    except Exception as exc:
+        log.warning("init_manual_screened_email_failed", screened_email_id=screened_email_id, error=str(exc))
+
+
+def _advance_stage_by_id(
+    supabase: Any,
+    screened_email_id: str,
+    new_status: str,
+    completing: str,
+    next_stage: str | None = None,
+) -> None:
+    """Like _advance_screened_email_stage but keyed on the row's UUID PK."""
+    now = datetime.now(timezone.utc).isoformat()
+    try:
+        resp = (
+            supabase.table("screened_emails")
+            .select("pipeline")
+            .eq("id", screened_email_id)
+            .limit(1)
+            .execute()
+        )
+        if not resp.data:
+            return
+        pipeline: list[dict] = list(resp.data[0].get("pipeline") or [])
+        updated = []
+        for s in pipeline:
+            s = dict(s)
+            if s["stage"] == completing:
+                s["status"] = "completed"
+                s["finished_at"] = now
+            elif next_stage and s["stage"] == next_stage:
+                s["status"] = "in_progress"
+                s["started_at"] = now
+            updated.append(s)
+        supabase.table("screened_emails").update(
+            {"pipeline": updated, "processing_status": new_status}
+        ).eq("id", screened_email_id).execute()
+    except Exception as exc:
+        log.warning("advance_stage_by_id_failed", completing=completing, error=str(exc))
+
+
+def _fail_screened_email_by_id(
+    supabase: Any,
+    screened_email_id: str,
+    error_msg: str,
+) -> None:
+    """Mark the screened_emails row as failed, keyed on its UUID PK."""
+    now = datetime.now(timezone.utc).isoformat()
+    try:
+        resp = (
+            supabase.table("screened_emails")
+            .select("pipeline")
+            .eq("id", screened_email_id)
+            .limit(1)
+            .execute()
+        )
+        if not resp.data:
+            return
+        pipeline: list[dict] = list(resp.data[0].get("pipeline") or [])
+        updated = []
+        for s in pipeline:
+            s = dict(s)
+            if s.get("status") == "in_progress":
+                s["status"] = "failed"
+                s["finished_at"] = now
+                s["detail"] = error_msg[:200]
+            updated.append(s)
+        supabase.table("screened_emails").update(
+            {"pipeline": updated, "processing_status": "failed"}
+        ).eq("id", screened_email_id).execute()
+    except Exception as exc:
+        log.warning("fail_screened_email_by_id_failed", error=str(exc))
+
+
+def _complete_screened_email_by_id(
+    supabase: Any,
+    screened_email_id: str,
+    deal_id: str,
+    screened_title: str | None,
+    screener_s3_key: str | None,
+    pipeline_stages: list[dict],
+) -> None:
+    """Mark the screened_emails row as complete, keyed on its UUID PK."""
+    update: dict[str, Any] = {
+        "processing_status": "complete",
+        "deal_id":           deal_id,
+        "screened_title":    screened_title,
+        "screener_s3_key":   screener_s3_key,
+        "pipeline":          pipeline_stages,
+    }
+    try:
+        supabase.table("screened_emails").update(update).eq("id", screened_email_id).execute()
+    except Exception as exc:
+        log.warning("complete_screened_email_by_id_failed", error=str(exc))
+
+
+def _persist_manual_upload_to_supabase(
+    supabase: Any,
+    user_id: str,
+    deal_id: str,
+    email_id: str,
+    screened_email_id: str,
+    result: dict[str, Any],
+    screener_s3_key: str | None,
+    s3_attachment_keys: list[dict],
+    email_detail: Any,
+    s3_folder: str,
+) -> None:
+    """Write the deal row and mark both emails + screened_emails as complete."""
+    prop     = result.get("property_info") or {}
+    summary  = result.get("deal_summary") or {}
+    screening = result.get("screening_result") or {}
+    now = datetime.now(timezone.utc).isoformat()
+
+    pipeline_stages = [
+        {"stage": "email_received",        "status": "completed", "finished_at": now},
+        {"stage": "parsing_attachments",   "status": "completed", "finished_at": now},
+        {"stage": "extracting_financials", "status": "completed", "finished_at": now},
+        {"stage": "running_screener",      "status": "completed", "finished_at": now},
+        {"stage": "complete",              "status": "completed", "finished_at": now},
+    ]
+
+    # Finalise the emails row
+    try:
+        supabase.table("emails").update({
+            "status":      "processed",
+            "deal_id":     deal_id,
+            "attachments": [
+                {"filename": k["filename"], "s3_key": k["s3_key"], "type": k["type"]}
+                for k in s3_attachment_keys
+            ],
+        }).eq("id", email_id).execute()
+    except Exception as exc:
+        log.warning("manual_email_finalise_failed", email_id=email_id, error=str(exc))
+
+    # Insert deal row (mirrors _persist_to_supabase structure exactly)
+    deal_row: dict[str, Any] = {
+        "id":                    deal_id,
+        "user_id":               user_id,
+        "email_id":              email_id,
+        "property_name":         prop.get("property_name", "Unknown Property"),
+        "asset_class":           prop.get("property_type"),
+        "recommendation":        screening.get("recommendation"),
+        "confidence":            screening.get("confidence"),
+        "risk_rating":           screening.get("risk_rating"),
+        "screener_storage_path": screener_s3_key,
+        "email_draft":           _build_email_draft(result),
+        "metrics":               screening.get("key_metrics", []),
+        "key_metrics":           screening.get("key_metrics", []),
+        "highlights": [
+            {
+                "title":  "Investment Highlights",
+                "detail": summary.get("investment_highlights", ""),
+            }
+        ],
+        "risks": [
+            {
+                "title":    "Investment Risks & Underwriting Flags",
+                "detail":   summary.get("investment_risks", ""),
+                "severity": screening.get("risk_rating", "moderate"),
+            }
+        ],
+        "pipeline":          pipeline_stages,
+        "financial_summary": screening.get("financial_summary"),
+        "sources_and_uses":  screening.get("sources_and_uses"),
+        "sponsor_overview":  summary.get("sponsor_overview"),
+        "location_summary":  summary.get("location_summary"),
+        "property_info":     result.get("property_info") or {},
+        "financials": {
+            "historical": result.get("financials") or {},
+            "proforma":   result.get("proforma") or {},
+        },
+        "s3_folder_key": s3_folder,
+        "created_at":    now,
+        "updated_at":    now,
+    }
+    try:
+        supabase.table("deals").insert(deal_row).execute()
+    except Exception as exc:
+        log.error("manual_deal_insert_failed", deal_id=deal_id, error=str(exc))
+        raise
+
+    _complete_screened_email_by_id(
+        supabase, screened_email_id, deal_id,
+        screened_title=prop.get("property_name"),
+        screener_s3_key=screener_s3_key,
+        pipeline_stages=pipeline_stages,
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  SUPABASE HELPERS — Gmail flow (lookup by gmail_message_id)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _find_email_row_id(supabase: Any, user_id: str, gmail_message_id: str) -> str | None:
@@ -722,6 +1072,83 @@ def _complete_screened_email(
             supabase.table("screened_emails").update(update).eq("id", existing.data[0]["id"]).execute()
     except Exception as exc:
         log.warning("screened_email_complete_failed", gmail_message_id=gmail_message_id, error=str(exc))
+
+
+def _advance_screened_email_stage(
+    supabase: Any,
+    user_id: str,
+    gmail_message_id: str,
+    new_status: str,
+    completing: str,
+    next_stage: str | None = None,
+) -> None:
+    """Mark `completing` stage as completed and optionally start `next_stage`.
+    Updates processing_status to `new_status`."""
+    now = datetime.now(timezone.utc).isoformat()
+    try:
+        existing = (
+            supabase.table("screened_emails")
+            .select("id, pipeline")
+            .eq("user_id", user_id)
+            .eq("gmail_message_id", gmail_message_id)
+            .limit(1)
+            .execute()
+        )
+        if not existing.data:
+            return
+        row_id = existing.data[0]["id"]
+        pipeline: list[dict] = list(existing.data[0].get("pipeline") or [])
+        updated = []
+        for s in pipeline:
+            s = dict(s)
+            if s["stage"] == completing:
+                s["status"] = "completed"
+                s["finished_at"] = now
+            elif next_stage and s["stage"] == next_stage:
+                s["status"] = "in_progress"
+                s["started_at"] = now
+            updated.append(s)
+        supabase.table("screened_emails").update(
+            {"pipeline": updated, "processing_status": new_status}
+        ).eq("id", row_id).execute()
+    except Exception as exc:
+        log.warning("advance_stage_failed", completing=completing, error=str(exc))
+
+
+def _fail_screened_email(
+    supabase: Any,
+    user_id: str,
+    gmail_message_id: str,
+    error_msg: str,
+) -> None:
+    """Mark the screened_emails row as failed, flagging the in-progress stage."""
+    now = datetime.now(timezone.utc).isoformat()
+    try:
+        existing = (
+            supabase.table("screened_emails")
+            .select("id, pipeline")
+            .eq("user_id", user_id)
+            .eq("gmail_message_id", gmail_message_id)
+            .limit(1)
+            .execute()
+        )
+        if not existing.data:
+            return
+        row_id = existing.data[0]["id"]
+        pipeline: list[dict] = list(existing.data[0].get("pipeline") or [])
+        updated = []
+        for s in pipeline:
+            s = dict(s)
+            if s.get("status") == "in_progress":
+                s["status"] = "failed"
+                s["finished_at"] = now
+                s["detail"] = error_msg[:200]
+            updated.append(s)
+        supabase.table("screened_emails").update(
+            {"pipeline": updated, "processing_status": "failed"}
+        ).eq("id", row_id).execute()
+    except Exception as exc:
+        log.warning("fail_screened_email_failed", error=str(exc))
 
 
 def _sync_cached_screened_email(
@@ -1152,8 +1579,10 @@ def _generate_excel_screener(result: dict[str, Any], template_path: str) -> byte
     """Populate the Bloomfield screener template (or a blank workbook) and
     inject Deal Summary text boxes. Returns the Excel file as bytes."""
     tmpl = Path(template_path)
+    log.info("screener_template_path", resolved=str(tmpl.resolve()))
     if tmpl.exists():
         wb = openpyxl.load_workbook(tmpl)
+        log.info("screener_template_sheets", sheets=wb.sheetnames)
         ws = wb["Summary"] if "Summary" in wb.sheetnames else wb.active
     else:
         log.warning("screener_template_missing", path=str(tmpl))
@@ -1244,132 +1673,29 @@ def _generate_excel_screener(result: dict[str, Any], template_path: str) -> byte
             col_idx = openpyxl.utils.column_index_from_string(col_letter)
             ws.cell(row=111, column=col_idx).value = noi
 
-    # Save to bytes then inject text boxes
+    deal_summary = result.get("deal_summary") or {}
+    overview   = deal_summary.get("property_overview", "")
+    highlights = deal_summary.get("investment_highlights", "")
+    risks      = deal_summary.get("investment_risks", "")
+
+    from openpyxl.styles import Alignment
+    wrap = Alignment(wrap_text=True, vertical="top")
+
+    combined = f"{overview}\n\n{highlights}".strip()
+    ws["B8"] = combined
+    ws["B8"].alignment = wrap
+    for r in range(8, 12):
+        ws.row_dimensions[r].height = None
+
+    ws["B13"] = risks
+    ws["B13"].alignment = wrap
+    for r in range(13, 26):
+        ws.row_dimensions[r].height = None
+
     buf = io.BytesIO()
     wb.save(buf)
     buf.seek(0)
-    raw_bytes = buf.read()
-
-    deal_summary = result.get("deal_summary") or {}
-    try:
-        return _inject_deal_summary_textboxes(raw_bytes, deal_summary)
-    except Exception as exc:
-        log.warning("textbox_injection_failed", error=str(exc))
-        return raw_bytes
-
-
-def _inject_deal_summary_textboxes(
-    excel_bytes: bytes,
-    deal_summary: dict[str, Any],
-) -> bytes:
-    """Inject the three Deal Summary text boxes into the Excel ZIP using
-    the xlsxwriter-draw + ZIP/XML patching method from the screener spec."""
-    overview_text   = deal_summary.get("property_overview", "")
-    highlights_text = deal_summary.get("investment_highlights", "")
-    risks_text      = deal_summary.get("investment_risks", "")
-
-    # ── Step 1: Build temp xlsxwriter workbook with only the text boxes ──────
-    tb_buf = io.BytesIO()
-    wb_tb  = xlsxwriter.Workbook(tb_buf, {"in_memory": True})
-    ws_tb  = wb_tb.add_worksheet("Summary")
-
-    ws_tb.insert_textbox(6,  1, overview_text, {
-        "width": 700, "height": 120,
-        "font":   {"name": "Calibri", "size": 10},
-        "fill":   {"color": "#F2F2F2"},
-        "border": {"color": "#BFBFBF", "width": 1},
-        "align":  {"vertical": "top"},
-    })
-    ws_tb.insert_textbox(12, 1, "INVESTMENT HIGHLIGHTS", {
-        "width": 700, "height": 18,
-        "font":   {"name": "Calibri", "size": 10, "bold": True, "color": "#FFFFFF"},
-        "fill":   {"color": "#1F3864"},
-        "border": {"color": "#1F3864"},
-    })
-    ws_tb.insert_textbox(13, 1, highlights_text, {
-        "width": 700, "height": 100,
-        "font":   {"name": "Calibri", "size": 10},
-        "fill":   {"color": "#F2F2F2"},
-        "border": {"color": "#BFBFBF", "width": 1},
-        "align":  {"vertical": "top"},
-    })
-    ws_tb.insert_textbox(18, 1, "INVESTMENT RISKS & UNDERWRITING FLAGS", {
-        "width": 700, "height": 18,
-        "font":   {"name": "Calibri", "size": 10, "bold": True, "color": "#FFFFFF"},
-        "fill":   {"color": "#C00000"},
-        "border": {"color": "#C00000"},
-    })
-    ws_tb.insert_textbox(19, 1, risks_text, {
-        "width": 700, "height": 100,
-        "font":   {"name": "Calibri", "size": 10},
-        "fill":   {"color": "#F2F2F2"},
-        "border": {"color": "#BFBFBF", "width": 1},
-        "align":  {"vertical": "top"},
-    })
-    wb_tb.close()
-
-    # ── Step 2: Pull drawing XML from the xlsxwriter temp file ───────────────
-    tb_buf.seek(0)
-    with zipfile.ZipFile(tb_buf, "r") as z:
-        drawing_xml = z.read("xl/drawings/drawing1.xml")
-
-    rels_content = (
-        b'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-        b'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
-        b'<Relationship Id="rId1" '
-        b'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" '
-        b'Target="../drawings/drawing1.xml"/>'
-        b"</Relationships>"
-    )
-
-    # ── Step 3: Patch sheet1.xml — clear rows 7-25, add <drawing> element ────
-    main_buf = io.BytesIO(excel_bytes)
-    with zipfile.ZipFile(main_buf, "r") as z:
-        content_types_xml = z.read("[Content_Types].xml")
-        sheet1_xml        = z.read("xl/worksheets/sheet1.xml")
-
-    ns   = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
-    r_ns = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
-    tree = etree.fromstring(sheet1_xml)
-    for row_el in tree.findall(f".//{{{ns}}}row"):
-        r_attr = row_el.get("r")
-        if r_attr and 7 <= int(r_attr) <= 25:
-            for c_el in row_el.findall(f"{{{ns}}}c"):
-                for child in list(c_el):
-                    c_el.remove(child)
-    drawing_el = etree.SubElement(tree, f"{{{ns}}}drawing")
-    drawing_el.set(f"{{{r_ns}}}id", "rId1")
-    updated_sheet1 = etree.tostring(
-        tree, xml_declaration=True, encoding="UTF-8", standalone=True
-    )
-
-    # ── Step 4: Patch [Content_Types].xml — register the drawing part ────────
-    ct_ns   = "http://schemas.openxmlformats.org/package/2006/content-types"
-    ct_tree = etree.fromstring(content_types_xml)
-    override = etree.SubElement(ct_tree, f"{{{ct_ns}}}Override")
-    override.set("PartName",    "/xl/drawings/drawing1.xml")
-    override.set("ContentType", "application/vnd.openxmlformats-officedocument.drawing+xml")
-    updated_ct = etree.tostring(
-        ct_tree, xml_declaration=True, encoding="UTF-8", standalone=True
-    )
-
-    # ── Step 5: Rewrite the main ZIP with patched files + drawing ────────────
-    out_buf = io.BytesIO()
-    main_buf.seek(0)
-    with zipfile.ZipFile(main_buf, "r") as zin:
-        with zipfile.ZipFile(out_buf, "w", zipfile.ZIP_DEFLATED) as zout:
-            for item in zin.infolist():
-                if item.filename == "xl/worksheets/sheet1.xml":
-                    zout.writestr(item, updated_sheet1)
-                elif item.filename == "[Content_Types].xml":
-                    zout.writestr(item, updated_ct)
-                else:
-                    zout.writestr(item, zin.read(item.filename))
-            zout.writestr("xl/drawings/drawing1.xml",             drawing_xml)
-            zout.writestr("xl/worksheets/_rels/sheet1.xml.rels",  rels_content)
-
-    out_buf.seek(0)
-    return out_buf.read()
+    return buf.read()
 
 
 # ─────────────────────────────────────────────────────────────────────────────

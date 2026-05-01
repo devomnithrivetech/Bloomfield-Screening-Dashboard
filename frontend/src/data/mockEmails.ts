@@ -14,6 +14,8 @@ export interface Email {
   subject: string;
   date: string;
   time: string;
+  /** Original ISO-8601 timestamp from the API — used when sending metadata to the backend */
+  receivedAt?: string;
   body: string;
   bodyHtml?: string;
   snippet: string;

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Search, Inbox, SearchX, Loader2, Mail, PlusCircle, ClipboardList, RefreshCw } from "lucide-react";
+import { Search, Inbox, SearchX, Loader2, Mail, PlusCircle, ClipboardList, RefreshCw, Upload } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import EmailRow from "@/components/EmailRow";
 import EmailDetail from "@/components/EmailDetail";
+import UploadDealModal from "@/components/UploadDealModal";
 import type { Email } from "@/data/mockEmails";
 import { emailsApi, gmailApi, type ApiEmailDetail, type ApiDashboardStats } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
@@ -64,6 +65,7 @@ function apiToEmail(api: ApiEmailDetail): Email {
     subject: api.subject,
     date,
     time,
+    receivedAt: api.received_at,
     body: api.body_text || api.preview,
     bodyHtml: api.body_html ?? undefined,
     snippet: api.preview,
@@ -110,6 +112,8 @@ const Dashboard = () => {
   const [dashStats, setDashStats] = useState<ApiDashboardStats | null>(() =>
     isCacheFresh() ? _cache!.stats ?? null : null
   );
+
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -347,21 +351,25 @@ const Dashboard = () => {
   }, [hasProcessing]);
 
   const handleSendForProcessing = async (id: string) => {
+    // Find the email so we can pass its metadata to the backend stub creator
+    const email = emails.find((e) => e.id === id) ?? _bodyCache.get(id) ?? null;
+
     setEmails((prev) =>
       prev.map((e) => (e.id === id ? { ...e, status: "Processing" as const } : e))
     );
     try {
-      const result = await emailsApi.process(id);
-      if (result.deal_id) {
-        setEmails((prev) =>
-          prev.map((e) =>
-            e.id === id
-              ? { ...e, status: "Processed" as const, deal_id: result.deal_id! }
-              : e
-          )
-        );
-      }
-      navigate("/screened");
+      await emailsApi.process(id, {
+        subject:      email?.subject,
+        sender:       email?.sender,
+        sender_email: email?.senderEmail || undefined,
+        received_at:  email?.receivedAt,
+      });
+      // The endpoint returns immediately (pipeline runs in background).
+      // The polling loop will advance status to "Processed" once done.
+      toast({
+        title: "Sent for screening",
+        description: "The AI pipeline has started. Check the Screening Queue for progress.",
+      });
     } catch {
       setEmails((prev) =>
         prev.map((e) => (e.id === id ? { ...e, status: "Unprocessed" as const } : e))
@@ -423,7 +431,15 @@ const Dashboard = () => {
             </div>
           </div>
         ))}
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          <Button
+            size="sm"
+            className="gap-2 text-xs font-medium"
+            onClick={() => setShowUploadModal(true)}
+          >
+            <Upload className="h-3.5 w-3.5" />
+            Upload Deal
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -594,6 +610,8 @@ const Dashboard = () => {
           )}
         </div>
       </div>
+
+      <UploadDealModal open={showUploadModal} onClose={() => setShowUploadModal(false)} />
     </div>
   );
 };

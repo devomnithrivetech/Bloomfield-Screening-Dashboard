@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.schemas.deal import (
     DealDetail,
@@ -20,27 +19,34 @@ log = get_logger(__name__)
 
 
 async def start_screening(user_id: str, email_id: str) -> str:
-    """Kick off the deal screening pipeline.
+    """Kick off the deal screening pipeline for a Gmail-sourced email.
 
     `email_id` is the Gmail message ID (the string that Gmail assigns).
-    Returns the deal_id UUID string — safe to return to the frontend immediately
-    since processing is awaited inline here.  Move to a background task queue
-    once the demo matures.
+    Returns the deal_id UUID string once processing is complete.
     """
-    settings = get_settings()
-
-    if settings.agentic_enabled:
-        # Full 8-agent pipeline (option_2 / option_3) — not yet wired end-to-end.
-        from app.agents import AgentContext, OrchestratorAgent
-        import uuid
-        deal_id = str(uuid.uuid4())
-        context = AgentContext(deal_id=deal_id, user_id=user_id, email_id=email_id)
-        orchestrator = OrchestratorAgent()
-        result = await orchestrator.run(context)
-        log.info("pipeline_result", deal_id=deal_id, success=result.success)
-        return deal_id
-
     return await _run_monolithic_screening(user_id, email_id)
+
+
+async def start_manual_screening(
+    user_id: str,
+    email_id: str,
+    screened_email_id: str,
+    raw_attachments: list[dict],
+    email_meta: dict,
+) -> str:
+    """Kick off the deal screening pipeline for a manually uploaded deal.
+
+    `email_id`         — internal UUID of the emails row (not a Gmail ID).
+    `screened_email_id`— UUID PK of the pre-created screened_emails row.
+    `raw_attachments`  — list of {filename, type, data} dicts already in memory.
+    `email_meta`       — {subject, sender, sender_email, body_text}.
+
+    Returns the deal_id UUID string once processing is complete.
+    """
+    from app.agents.demo import run_manual_upload_screening
+    return await run_manual_upload_screening(
+        user_id, email_id, screened_email_id, raw_attachments, email_meta
+    )
 
 
 async def _run_monolithic_screening(user_id: str, email_id: str) -> str:

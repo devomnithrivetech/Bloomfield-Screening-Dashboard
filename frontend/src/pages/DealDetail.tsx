@@ -91,9 +91,14 @@ const DealDetail = () => {
     return () => { cancelled = true; };
   }, [id]);
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!id) return;
-    window.open(dealsApi.screenerUrl(id), "_blank");
+    try {
+      const { url } = await dealsApi.getScreenerDownloadUrl(id);
+      window.open(url, "_blank");
+    } catch {
+      // silently ignore — button is disabled when no screener exists
+    }
   };
 
   const handleSendEmail = () => {
