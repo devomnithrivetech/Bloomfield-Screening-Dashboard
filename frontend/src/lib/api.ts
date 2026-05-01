@@ -220,6 +220,8 @@ export interface ScreenedEmail {
 
 export const screenedApi = {
   list: () => apiFetch<ScreenedEmail[]>("/api/screened"),
+  reprocess: (screened_email_id: string) =>
+    apiFetch<{ status: string }>(`/api/screened/${screened_email_id}/reprocess`, { method: "POST" }),
 };
 
 // ---------------------------------------------------------------------------

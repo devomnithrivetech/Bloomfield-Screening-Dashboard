@@ -18,6 +18,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import io
+import json
 import re
 import uuid
 from datetime import datetime, timezone
@@ -480,6 +481,133 @@ SCREENER_TOOL: dict[str, Any] = {
 #  PUBLIC ENTRY POINTS
 # ─────────────────────────────────────────────────────────────────────────────
 
+async def run_manual_reprocess_from_s3(
+    user_id: str,
+    screened_email_id: str,
+    screened_entry: dict[str, Any],
+) -> str:
+    """Re-run a manual upload pipeline by re-downloading its files from S3.
+
+    Locates the original emails row via the old deal_id (if present) or a
+    subject/sender match, downloads S3 attachments, then delegates to the
+    standard manual upload pipeline.
+    """
+    settings = get_settings()
+    supabase = get_supabase()
+    loop = asyncio.get_running_loop()
+
+    email_meta: dict[str, Any] = {
+        "subject":      screened_entry.get("subject"),
+        "sender":       screened_entry.get("sender"),
+        "sender_email": screened_entry.get("sender_email"),
+    }
+
+    email_id: str | None = None
+    att_records: list[dict] = []
+
+    try:
+        # Try to find the email row via the old deal_id → deals.email_id
+        old_deal_id = screened_entry.get("deal_id")
+        if old_deal_id:
+            try:
+                deal_resp = (
+                    supabase.table("deals")
+                    .select("email_id")
+                    .eq("id", old_deal_id)
+                    .limit(1)
+                    .execute()
+                )
+                if deal_resp.data:
+                    email_id = str(deal_resp.data[0]["email_id"])
+            except Exception as exc:
+                log.warning("reprocess_deal_lookup_failed", error=str(exc))
+
+        # Fallback: find the most-recent manual_upload email with a matching subject
+        if not email_id:
+            try:
+                emails_resp = (
+                    supabase.table("emails")
+                    .select("id, attachments, body_text")
+                    .eq("user_id", user_id)
+                    .eq("source", "manual_upload")
+                    .eq("subject", screened_entry.get("subject") or "")
+                    .order("received_at", desc=True)
+                    .limit(1)
+                    .execute()
+                )
+                if emails_resp.data:
+                    row = emails_resp.data[0]
+                    email_id = str(row["id"])
+                    att_records = row.get("attachments") or []
+                    email_meta["body_text"] = row.get("body_text")
+            except Exception as exc:
+                log.warning("reprocess_email_lookup_failed", error=str(exc))
+
+        if not email_id:
+            raise RuntimeError("Cannot find original email record for manual reprocessing")
+
+        # Fetch attachment records if not already obtained via the fallback path
+        if not att_records:
+            try:
+                email_resp = (
+                    supabase.table("emails")
+                    .select("attachments, body_text")
+                    .eq("id", email_id)
+                    .limit(1)
+                    .execute()
+                )
+                if email_resp.data:
+                    row = email_resp.data[0]
+                    att_records = row.get("attachments") or []
+                    email_meta["body_text"] = email_meta.get("body_text") or row.get("body_text")
+            except Exception as exc:
+                log.warning("reprocess_att_lookup_failed", error=str(exc))
+
+        # Download files from S3 and rebuild raw_attachments
+        _ext_to_type: dict[str, str] = {
+            ".pdf": "pdf", ".xlsx": "excel", ".xls": "excel",
+            ".csv": "other", ".docx": "word", ".doc": "word",
+        }
+        raw_attachments: list[dict] = []
+        for att in att_records:
+            s3_key  = att.get("s3_key")
+            filename = att.get("filename") or "unknown"
+            if not s3_key:
+                continue
+            try:
+                data = await loop.run_in_executor(None, _s3_get_bytes, s3_key, settings)
+                ext = ("." + filename.rsplit(".", 1)[-1].lower()) if "." in filename else ""
+                raw_attachments.append({
+                    "filename": filename,
+                    "type":     _ext_to_type.get(ext, "other"),
+                    "data":     data,
+                })
+            except Exception as exc:
+                log.warning("reprocess_s3_download_failed", s3_key=s3_key, error=str(exc))
+
+        if not raw_attachments:
+            log.warning(
+                "manual_reprocess_no_files",
+                screened_email_id=screened_email_id,
+                email_id=email_id,
+            )
+
+        log.info(
+            "manual_reprocess_starting",
+            screened_email_id=screened_email_id,
+            email_id=email_id,
+            file_count=len(raw_attachments),
+        )
+        return await run_manual_upload_screening(
+            user_id, email_id, screened_email_id, raw_attachments, email_meta
+        )
+
+    except Exception as exc:
+        log.error("manual_reprocess_failed", screened_email_id=screened_email_id, error=str(exc))
+        _fail_screened_email_by_id(supabase, screened_email_id, str(exc))
+        raise
+
+
 async def run_manual_upload_screening(
     user_id: str,
     email_id: str,
@@ -495,7 +623,7 @@ async def run_manual_upload_screening(
     """
     settings = get_settings()
     supabase = get_supabase()
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
 
     # email_id (internal UUID) doubles as the S3 folder prefix for uploads
     s3_folder = email_id
@@ -650,7 +778,7 @@ async def run_demo_screening(
             completing="email_received",
             next_stage="parsing_attachments",
         )
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         raw_attachments: list[dict[str, Any]] = []
         for att in email_detail.attachments:
             if att.id:
@@ -891,16 +1019,16 @@ def _persist_manual_upload_to_supabase(
         {"stage": "complete",              "status": "completed", "finished_at": now},
     ]
 
-    # Finalise the emails row
+    # Finalise the emails row — only update attachments when we have keys to avoid
+    # wiping the stored list if S3 upload failed during this run
+    email_update: dict[str, Any] = {"status": "processed", "deal_id": deal_id}
+    if s3_attachment_keys:
+        email_update["attachments"] = [
+            {"filename": k["filename"], "s3_key": k["s3_key"], "type": k["type"]}
+            for k in s3_attachment_keys
+        ]
     try:
-        supabase.table("emails").update({
-            "status":      "processed",
-            "deal_id":     deal_id,
-            "attachments": [
-                {"filename": k["filename"], "s3_key": k["s3_key"], "type": k["type"]}
-                for k in s3_attachment_keys
-            ],
-        }).eq("id", email_id).execute()
+        supabase.table("emails").update(email_update).eq("id", email_id).execute()
     except Exception as exc:
         log.warning("manual_email_finalise_failed", email_id=email_id, error=str(exc))
 
@@ -1272,12 +1400,15 @@ def _persist_to_supabase(
             if email_detail.received_at else now
         ),
         "status":           "processed",
-        "attachments":      [
-            {"filename": k["filename"], "s3_key": k["s3_key"], "type": k["type"]}
-            for k in s3_attachment_keys
-        ],
         "deal_id":          deal_id,
     }
+    # Only update the stored attachment list when we have keys — avoids wiping the
+    # previous list if S3 upload failed on this run
+    if s3_attachment_keys:
+        email_row["attachments"] = [
+            {"filename": k["filename"], "s3_key": k["s3_key"], "type": k["type"]}
+            for k in s3_attachment_keys
+        ]
     internal_email_id = _safe_email_write(supabase, user_id, gmail_message_id, email_row)
 
     # Insert deal row
@@ -1405,6 +1536,12 @@ def _s3_put_bytes(key: str, data: bytes, content_type: str, settings: Any) -> No
     s3.put_object(Bucket=settings.aws_s3_bucket, Key=key, Body=data, ContentType=content_type)
 
 
+def _s3_get_bytes(key: str, settings: Any) -> bytes:
+    s3 = _get_s3_client(settings)
+    response = s3.get_object(Bucket=settings.aws_s3_bucket, Key=key)
+    return response["Body"].read()
+
+
 def _s3_presigned_url(key: str, settings: Any, expires: int = 3600) -> str:
     s3 = _get_s3_client(settings)
     return s3.generate_presigned_url(
@@ -1512,6 +1649,22 @@ def _extract_excel_text(data: bytes, filename: str) -> str:
 #  CLAUDE API CALL
 # ─────────────────────────────────────────────────────────────────────────────
 
+_DICT_KEYS = ("property_info", "deal_summary", "screening_result", "loan_terms", "financial_data")
+
+
+def _normalize_tool_result(result: dict[str, Any]) -> dict[str, Any]:
+    """If Claude serializes a nested object as a JSON string, parse it back to a dict."""
+    for key in _DICT_KEYS:
+        val = result.get(key)
+        if isinstance(val, str):
+            try:
+                parsed = json.loads(val)
+                result[key] = parsed if isinstance(parsed, dict) else {}
+            except (json.JSONDecodeError, ValueError):
+                result[key] = {}
+    return result
+
+
 async def _call_claude(
     email_detail: Any,
     doc_blocks: list[dict[str, Any]],
@@ -1587,7 +1740,7 @@ async def _call_claude(
     for block in response.content:
         if hasattr(block, "type") and block.type == "tool_use":
             if block.name == "submit_screening_result":
-                return dict(block.input)
+                return _normalize_tool_result(dict(block.input))
 
     raise ValueError(
         "Claude did not call submit_screening_result. "
@@ -1780,5 +1933,5 @@ def _generate_excel_screener(result: dict[str, Any], template_path: str) -> byte
 async def get_screener_presigned_url(s3_key: str) -> str:
     """Return a 1-hour pre-signed S3 URL for downloading the screener Excel."""
     settings = get_settings()
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     return await loop.run_in_executor(None, _s3_presigned_url, s3_key, settings)

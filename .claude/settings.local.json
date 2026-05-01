@@ -5,7 +5,8 @@
       "Bash(xargs grep *)",
       "Bash(pip install *)",
       "Bash(python -c \"import docx; print\\('python-docx', docx.__version__\\)\")",
-      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")"
+      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
+      "Bash(xargs ls *)"
     ]
   }
 }

@@ -8,6 +8,17 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { screenedApi, type ScreenedEmail, type ApiPipelineStage } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
@@ -155,14 +166,29 @@ function PipelineTrack({ pipeline }: { pipeline: ApiPipelineStage[] }) {
 //  CARD
 // ─────────────────────────────────────────────────────────────────────────────
 
-function ScreenedCard({ entry }: { entry: ScreenedEmail }) {
+function ScreenedCard({ entry, onReprocessed }: { entry: ScreenedEmail; onReprocessed: (id: string) => void }) {
   const navigate  = useNavigate();
+  const { toast } = useToast();
   const pipeline  = buildPipeline(entry);
   const isComplete = entry.processing_status === "complete";
   const isFailed   = entry.processing_status === "failed";
   const isActive   = !isComplete && !isFailed;
+  const [isReprocessing, setIsReprocessing] = useState(false);
 
   const displayTitle = entry.screened_title ?? entry.subject;
+
+  async function handleReprocess() {
+    setIsReprocessing(true);
+    try {
+      await screenedApi.reprocess(entry.id);
+      toast({ title: "Pipeline restarted", description: "The screening pipeline has been reset and will begin shortly." });
+      onReprocessed(entry.id);
+    } catch {
+      toast({ title: "Failed to restart pipeline", variant: "destructive" });
+    } finally {
+      setIsReprocessing(false);
+    }
+  }
 
   return (
     <Card className={cn(
@@ -207,10 +233,43 @@ function ScreenedCard({ entry }: { entry: ScreenedEmail }) {
         {/* Pipeline progress track */}
         <PipelineTrack pipeline={pipeline} />
 
-        {/* Action row */}
-        {isComplete && entry.deal_id && (
-          <div className="flex items-center gap-2 pt-1 border-t border-border">
-            {/* Download Screener button intentionally hidden — re-enable once screener output is finalised */}
+        {/* Action row — always visible */}
+        <div className="flex items-center gap-2 pt-1 border-t border-border">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs"
+                disabled={isReprocessing}
+              >
+                {isReprocessing
+                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  : <RefreshCw className="h-3.5 w-3.5" />
+                }
+                Re-process
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Restart the AI pipeline?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will reset and restart the screening pipeline from the beginning.
+                  {isActive && " Any in-progress work will be overwritten by the new run."}
+                  {isComplete && " The existing screening results will be replaced."}
+                  {" "}This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleReprocess}>
+                  Yes, re-process
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          {isComplete && entry.deal_id && (
             <Button
               size="sm"
               className="bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5 text-xs ml-auto"
@@ -219,16 +278,14 @@ function ScreenedCard({ entry }: { entry: ScreenedEmail }) {
               Screening Results
               <ArrowRight className="h-3.5 w-3.5" />
             </Button>
-          </div>
-        )}
+          )}
 
-        {isFailed && (
-          <div className="pt-1 border-t border-border">
-            <p className="text-xs text-destructive">
-              Processing failed. Select the email from the inbox and retry.
+          {isFailed && (
+            <p className="text-xs text-destructive ml-1">
+              Processing failed — click Re-process to try again.
             </p>
-          </div>
-        )}
+          )}
+        </div>
       </CardContent>
     </Card>
   );
@@ -264,8 +321,9 @@ const ScreenedEmails = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const [entries,  setEntries]  = useState<ScreenedEmail[]>([]);
-  const [loading,  setLoading]  = useState(true);
+  const [entries,   setEntries]   = useState<ScreenedEmail[]>([]);
+  const [loading,   setLoading]   = useState(true);
+  const [pinnedId,  setPinnedId]  = useState<string | null>(null);
 
   // ── filter & sort state ──────────────────────────────────────────────────
   const [searchQuery,   setSearchQuery]   = useState("");
@@ -354,8 +412,17 @@ const ScreenedEmails = () => {
       return sortOrder === "newest" ? -diff : diff;
     });
 
+    // Pin the most recently re-processed entry to the top
+    if (pinnedId) {
+      const idx = result.findIndex((e) => e.id === pinnedId);
+      if (idx > 0) {
+        const [pinned] = result.splice(idx, 1);
+        result.unshift(pinned);
+      }
+    }
+
     return result;
-  }, [entries, searchQuery, datePreset, specificDate, dateFrom, dateTo, sortOrder]);
+  }, [entries, searchQuery, datePreset, specificDate, dateFrom, dateTo, sortOrder, pinnedId]);
 
   const isFiltered =
     searchQuery.trim() !== "" ||
@@ -552,7 +619,7 @@ const ScreenedEmails = () => {
         ) : (
           <div className="space-y-4">
             {filteredAndSorted.map((entry) => (
-              <ScreenedCard key={entry.id} entry={entry} />
+              <ScreenedCard key={entry.id} entry={entry} onReprocessed={(id) => { setPinnedId(id); fetchEntries(true); }} />
             ))}
           </div>
         )}

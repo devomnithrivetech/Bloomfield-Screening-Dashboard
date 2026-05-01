@@ -36,6 +36,16 @@ async def start_screening(
     return await _run_monolithic_screening(user_id, email_id, extra_attachments, additional_instructions)
 
 
+async def reprocess_manual_screening(
+    user_id: str,
+    screened_email_id: str,
+    screened_entry: dict,
+) -> str:
+    """Re-run a manual upload screening pipeline by re-fetching its files from S3."""
+    from app.agents.demo import run_manual_reprocess_from_s3
+    return await run_manual_reprocess_from_s3(user_id, screened_email_id, screened_entry)
+
+
 async def start_manual_screening(
     user_id: str,
     email_id: str,
