@@ -92,14 +92,44 @@ export const emailsApi = {
       method: "POST",
       body: JSON.stringify({ ids }),
     }),
-  process: (
+  /**
+   * Send a Gmail email through the AI screening pipeline.
+   *
+   * Uses multipart/form-data so that `extraFiles` (user-uploaded documents) can
+   * be included alongside the metadata fields.  `additionalInstructions` is
+   * injected verbatim into the analyst prompt.
+   */
+  process: async (
     emailId: string,
     meta?: { subject?: string; sender?: string; sender_email?: string; received_at?: string },
-  ) =>
-    apiFetch<ProcessEmailResponse>(`/api/emails/${emailId}/process`, {
+    extraFiles?: File[],
+    additionalInstructions?: string,
+  ): Promise<ProcessEmailResponse> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const form = new FormData();
+    if (meta?.subject)      form.append("subject",      meta.subject);
+    if (meta?.sender)       form.append("sender",       meta.sender);
+    if (meta?.sender_email) form.append("sender_email", meta.sender_email);
+    if (meta?.received_at)  form.append("received_at",  meta.received_at);
+    if (additionalInstructions?.trim()) {
+      form.append("additional_instructions", additionalInstructions.trim());
+    }
+    (extraFiles ?? []).forEach((f) => form.append("extra_files", f));
+
+    const headers: Record<string, string> = {};
+    if (session?.access_token) headers["Authorization"] = `Bearer ${session.access_token}`;
+
+    const res = await fetch(`${API_BASE}/api/emails/${emailId}/process`, {
       method: "POST",
-      body: JSON.stringify(meta ?? {}),
-    }),
+      headers,
+      body: form,
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`API ${res.status}: /api/emails/${emailId}/process — ${text}`);
+    }
+    return res.json() as Promise<ProcessEmailResponse>;
+  },
   attachmentUrl: (emailId: string, attachmentId: string, filename: string) =>
     `${API_BASE}/api/emails/${emailId}/attachments/${attachmentId}?filename=${encodeURIComponent(filename)}`,
   stats: () => apiFetch<ApiDashboardStats>("/api/emails/stats"),

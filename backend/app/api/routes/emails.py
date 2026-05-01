@@ -4,7 +4,7 @@ from __future__ import annotations
 import io
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import StreamingResponse
 
 from app.core.security import get_current_user
@@ -21,6 +21,12 @@ from app.schemas.email import (
     ProcessEmailResponse,
 )
 from app.services import deal_service, email_service
+
+# Validation constants for extra attached files
+_ALLOWED_EXTRA_EXTENSIONS: frozenset[str] = frozenset({".pdf", ".xlsx", ".xls", ".csv"})
+_EXTRA_EXT_TO_TYPE: dict[str, str] = {".pdf": "pdf", ".xlsx": "excel", ".xls": "excel", ".csv": "other"}
+_MAX_EXTRA_FILES = 10
+_MAX_EXTRA_BYTES = 50 * 1024 * 1024  # 50 MB per file
 
 router = APIRouter()
 
@@ -205,14 +211,78 @@ async def summarize_email(
 async def process_email(
     email_id: str,
     background_tasks: BackgroundTasks,
-    meta: ProcessEmailRequest = Body(default_factory=ProcessEmailRequest),
+    extra_files: list[UploadFile] = File(default=[]),
+    subject: str = Form(default="(no subject)"),
+    sender: str = Form(default="Unknown"),
+    sender_email: str | None = Form(default=None),
+    received_at: str | None = Form(default=None),
+    additional_instructions: str | None = Form(default=None),
     user: dict = Depends(get_current_user),
 ) -> ProcessEmailResponse:
-    # Write the screened_emails card NOW (with real subject/sender from the frontend)
-    # so it appears in the Screening Queue before the background pipeline starts.
+    """Process a Gmail email through the AI screening pipeline.
+
+    Accepts multipart/form-data.  `extra_files` (optional) are uploaded to S3
+    alongside the email's own attachments and included in the LLM context.
+    `additional_instructions` is injected into the analyst prompt verbatim.
+    """
+    # Validate extra files up-front (cheap, no reads yet)
+    if len(extra_files) > _MAX_EXTRA_FILES:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Maximum {_MAX_EXTRA_FILES} additional files per submission.",
+        )
+    for f in extra_files:
+        if not f.filename:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Every uploaded file must have a filename.",
+            )
+        ext = ("." + f.filename.rsplit(".", 1)[-1].lower()) if "." in f.filename else ""
+        if ext not in _ALLOWED_EXTRA_EXTENSIONS:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    f"'{f.filename}' has an unsupported type. "
+                    "Allowed: PDF, XLSX, XLS, CSV."
+                ),
+            )
+
+    # Read file bytes and enforce per-file size limit
+    raw_extra: list[dict] = []
+    for f in extra_files:
+        data = await f.read()
+        if len(data) > _MAX_EXTRA_BYTES:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"'{f.filename}' exceeds the 50 MB limit.",
+            )
+        ext = ("." + f.filename.rsplit(".", 1)[-1].lower()) if "." in f.filename else ""  # type: ignore[union-attr]
+        raw_extra.append({
+            "filename": f.filename,
+            "type":     _EXTRA_EXT_TO_TYPE.get(ext, "other"),
+            "data":     data,
+        })
+
+    # Rebuild a ProcessEmailRequest from form fields for the stub helper
+    meta = ProcessEmailRequest(
+        subject=subject,
+        sender=sender,
+        sender_email=sender_email,
+        received_at=received_at,
+    )
+
+    # Write the screened_emails card NOW so it appears in the Screening Queue
+    # before the background pipeline starts.
     _upsert_screened_stub(user["id"], email_id, meta)
+
     # Run the full pipeline in the background — response returns immediately.
-    background_tasks.add_task(deal_service.start_screening, user["id"], email_id)
+    background_tasks.add_task(
+        deal_service.start_screening,
+        user["id"],
+        email_id,
+        raw_extra or None,
+        additional_instructions or None,
+    )
     return ProcessEmailResponse(deal_id=None, status="processing")
 
 

@@ -55,10 +55,11 @@ class ProcessEmailRequest(BaseModel):
     """Optional metadata the frontend sends along with the process request.
     All fields have sensible defaults so the endpoint is backwards-compatible
     with callers that send no body."""
-    subject:      str       = "(no subject)"
-    sender:       str       = "Unknown"
-    sender_email: str | None = None
-    received_at:  str | None = None
+    subject:                 str       = "(no subject)"
+    sender:                  str       = "Unknown"
+    sender_email:            str | None = None
+    received_at:             str | None = None
+    additional_instructions: str | None = None
 
 
 class ProcessEmailResponse(BaseModel):

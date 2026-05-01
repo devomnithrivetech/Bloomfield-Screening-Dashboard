@@ -18,13 +18,22 @@ from app.schemas.deal import (
 log = get_logger(__name__)
 
 
-async def start_screening(user_id: str, email_id: str) -> str:
+async def start_screening(
+    user_id: str,
+    email_id: str,
+    extra_attachments: list[dict] | None = None,
+    additional_instructions: str | None = None,
+) -> str:
     """Kick off the deal screening pipeline for a Gmail-sourced email.
 
     `email_id` is the Gmail message ID (the string that Gmail assigns).
+    `extra_attachments` — optional list of {filename, type, data} dicts uploaded
+    by the user alongside the email; stored in S3 and fed to the LLM.
+    `additional_instructions` — optional free-text instructions injected into the
+    analyst prompt.
     Returns the deal_id UUID string once processing is complete.
     """
-    return await _run_monolithic_screening(user_id, email_id)
+    return await _run_monolithic_screening(user_id, email_id, extra_attachments, additional_instructions)
 
 
 async def start_manual_screening(
@@ -49,10 +58,15 @@ async def start_manual_screening(
     )
 
 
-async def _run_monolithic_screening(user_id: str, email_id: str) -> str:
+async def _run_monolithic_screening(
+    user_id: str,
+    email_id: str,
+    extra_attachments: list[dict] | None = None,
+    additional_instructions: str | None = None,
+) -> str:
     """Option 1 path — single Claude call that handles the full pipeline."""
     from app.agents.demo import run_demo_screening
-    return await run_demo_screening(user_id, email_id)
+    return await run_demo_screening(user_id, email_id, extra_attachments, additional_instructions)
 
 
 async def list_deals(user_id: str) -> DealListResponse:

@@ -350,22 +350,24 @@ const Dashboard = () => {
     return () => clearInterval(timer);
   }, [hasProcessing]);
 
-  const handleSendForProcessing = async (id: string) => {
-    // Find the email so we can pass its metadata to the backend stub creator
+  const handleSendForProcessing = async (id: string, extraFiles: File[], instructions: string) => {
     const email = emails.find((e) => e.id === id) ?? _bodyCache.get(id) ?? null;
 
     setEmails((prev) =>
       prev.map((e) => (e.id === id ? { ...e, status: "Processing" as const } : e))
     );
     try {
-      await emailsApi.process(id, {
-        subject:      email?.subject,
-        sender:       email?.sender,
-        sender_email: email?.senderEmail || undefined,
-        received_at:  email?.receivedAt,
-      });
-      // The endpoint returns immediately (pipeline runs in background).
-      // The polling loop will advance status to "Processed" once done.
+      await emailsApi.process(
+        id,
+        {
+          subject:      email?.subject,
+          sender:       email?.sender,
+          sender_email: email?.senderEmail || undefined,
+          received_at:  email?.receivedAt,
+        },
+        extraFiles.length > 0 ? extraFiles : undefined,
+        instructions.trim() || undefined,
+      );
       toast({
         title: "Sent for screening",
         description: "The AI pipeline has started. Check the Screening Queue for progress.",

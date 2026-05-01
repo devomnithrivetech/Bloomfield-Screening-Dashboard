@@ -553,7 +553,7 @@ async def run_manual_upload_screening(
         )
 
         log.info("manual_upload_calling_claude", email_id=email_id)
-        result = await _call_claude(email_detail, doc_text_blocks, settings)
+        result = await _call_claude(email_detail, doc_text_blocks, settings, additional_instructions=None)
 
         _advance_stage_by_id(
             supabase, screened_email_id,
@@ -598,11 +598,23 @@ async def run_manual_upload_screening(
         raise
 
 
-async def run_demo_screening(user_id: str, gmail_message_id: str) -> str:
+async def run_demo_screening(
+    user_id: str,
+    gmail_message_id: str,
+    extra_attachments: list[dict[str, Any]] | None = None,
+    additional_instructions: str | None = None,
+) -> str:
     """Process a deal email end-to-end and return the deal_id (UUID string).
 
     On a second call for the same (user_id, gmail_message_id) pair the cached
     deal_id is returned immediately without re-processing.
+
+    `extra_attachments` — optional list of {filename, type, data} dicts uploaded
+    by the user from their device alongside the email.  Stored in S3 under the
+    same gmail_message_id folder and fed to the LLM as additional documents.
+
+    `additional_instructions` — optional free-text analyst instructions injected
+    verbatim into the screener prompt before the final analysis task.
     """
     settings = get_settings()
     supabase = get_supabase()
@@ -653,7 +665,7 @@ async def run_demo_screening(user_id: str, gmail_message_id: str) -> str:
                 except Exception as exc:
                     log.warning("attachment_download_failed", filename=att.filename, error=str(exc))
 
-        # 5. Upload raw attachments to S3 (best-effort — pipeline continues on failure)
+        # 5. Upload Gmail attachments to S3 (best-effort — pipeline continues on failure)
         try:
             s3_attachment_keys = await loop.run_in_executor(
                 None, _upload_attachments_sync, gmail_message_id, raw_attachments, settings
@@ -662,8 +674,27 @@ async def run_demo_screening(user_id: str, gmail_message_id: str) -> str:
             log.warning("s3_attachments_skipped", error=str(exc))
             s3_attachment_keys = []
 
-        # 6. Extract document text  (parsing_attachments → complete, extracting_financials → in_progress)
+        # 5b. Upload user-supplied extra attachments to the same S3 folder
+        if extra_attachments:
+            try:
+                extra_s3_keys = await loop.run_in_executor(
+                    None, _upload_attachments_sync, gmail_message_id, extra_attachments, settings
+                )
+                s3_attachment_keys.extend(extra_s3_keys)
+                log.info(
+                    "extra_attachments_uploaded",
+                    count=len(extra_s3_keys),
+                    gmail_message_id=gmail_message_id,
+                )
+            except Exception as exc:
+                log.warning("s3_extra_attachments_skipped", error=str(exc))
+
+        # 6. Extract document text from all attachments
+        #    (parsing_attachments → complete, extracting_financials → in_progress)
         doc_text_blocks = _build_document_text_blocks(raw_attachments)
+        if extra_attachments:
+            doc_text_blocks.extend(_build_document_text_blocks(extra_attachments))
+
         _advance_screened_email_stage(
             supabase, user_id, gmail_message_id,
             new_status="extracting_financials",
@@ -673,7 +704,10 @@ async def run_demo_screening(user_id: str, gmail_message_id: str) -> str:
 
         # 7. Call Claude with the full analyst prompt
         log.info("demo_calling_claude", gmail_message_id=gmail_message_id)
-        result = await _call_claude(email_detail, doc_text_blocks, settings)
+        result = await _call_claude(
+            email_detail, doc_text_blocks, settings,
+            additional_instructions=additional_instructions,
+        )
 
         # (extracting_financials → complete, running_screener → in_progress)
         _advance_screened_email_stage(
@@ -1457,6 +1491,7 @@ async def _call_claude(
     email_detail: Any,
     doc_blocks: list[dict[str, Any]],
     settings: Any,
+    additional_instructions: str | None = None,
 ) -> dict[str, Any]:
     client = get_claude_client()
 
@@ -1484,6 +1519,21 @@ async def _call_claude(
                 "[NOTE: No attachments were provided with this email. "
                 "Analyze based on the email body only and flag all missing "
                 "financial documents as underwriting gaps.]"
+            ),
+        })
+
+    # Optional analyst instructions — injected immediately before the task
+    # directive so Claude treats them as high-priority guidance.
+    if additional_instructions and additional_instructions.strip():
+        content.append({
+            "type": "text",
+            "text": (
+                "════════════════════════════════════════════════════════\n"
+                "SPECIAL INSTRUCTIONS FROM THE ANALYST (HIGHEST PRIORITY — MUST FOLLOW):\n"
+                "════════════════════════════════════════════════════════\n"
+                f"{additional_instructions.strip()}\n"
+                "════════════════════════════════════════════════════════\n"
+                "Apply the above instructions when producing your analysis and output."
             ),
         })
 
