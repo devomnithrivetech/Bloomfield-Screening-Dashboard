@@ -1,16 +1,11 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import {
-  ArrowLeft, Download, Mail, AlertTriangle,
-  CheckCircle2, Loader2,
+  ArrowLeft, Download, AlertTriangle, CheckCircle2, Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-} from "@/components/ui/dialog";
-import { useToast } from "@/hooks/use-toast";
 import { dealsApi, type ApiDealDetail, type ApiKeyMetric } from "@/lib/api";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -75,12 +70,8 @@ function Th({ right, children }: { right?: boolean; children: React.ReactNode })
 const DealDetail = () => {
   const navigate    = useNavigate();
   const { id }      = useParams<{ id: string }>();
-  const { toast }   = useToast();
-
-  const [deal, setDeal]                     = useState<ApiDealDetail | null>(null);
-  const [loading, setLoading]               = useState(true);
-  const [emailModalOpen, setEmailModalOpen] = useState(false);
-  const [sending, setSending]               = useState(false);
+  const [deal, setDeal]   = useState<ApiDealDetail | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!id) { setLoading(false); return; }
@@ -99,15 +90,6 @@ const DealDetail = () => {
     } catch {
       // silently ignore — button is disabled when no screener exists
     }
-  };
-
-  const handleSendEmail = () => {
-    setSending(true);
-    setTimeout(() => {
-      setSending(false);
-      setEmailModalOpen(false);
-      toast({ title: "Email sent", description: "Screening email delivered to the Investment Committee." });
-    }, 900);
   };
 
   // ── Loading ────────────────────────────────────────────────────────────────
@@ -419,47 +401,10 @@ const DealDetail = () => {
               <Download className="h-4 w-4" />
               Download Screener (XLSX)
             </Button>
-            {deal.screening_email_draft && (
-              <Button
-                variant="outline"
-                className="border-primary text-primary hover:bg-primary/5 gap-2 press"
-                onClick={() => setEmailModalOpen(true)}
-              >
-                <Mail className="h-4 w-4" />
-                Preview Draft Email
-              </Button>
-            )}
           </CardContent>
         </Card>
 
       </div>
-
-      {/* ── Email Preview Modal ──────────────────────────────────────────── */}
-      {deal.screening_email_draft && (
-        <Dialog open={emailModalOpen} onOpenChange={setEmailModalOpen}>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="text-base font-semibold">Draft Screening Email</DialogTitle>
-            </DialogHeader>
-            <pre className="whitespace-pre-wrap text-sm text-foreground leading-relaxed font-sans">
-              {deal.screening_email_draft}
-            </pre>
-            <DialogFooter className="gap-2">
-              <Button variant="outline" onClick={() => setEmailModalOpen(false)} disabled={sending}>
-                Close
-              </Button>
-              <Button
-                onClick={handleSendEmail}
-                disabled={sending}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground press gap-2"
-              >
-                {sending && <Loader2 className="h-4 w-4 animate-spin" />}
-                {sending ? "Sending..." : "Send Email"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
     </div>
   );
 };
