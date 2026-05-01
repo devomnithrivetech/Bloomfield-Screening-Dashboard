@@ -1,9 +1,16 @@
+import { supabase } from "./supabase";
+
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) || "http://localhost:8000";
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (session?.access_token) {
+    headers["Authorization"] = `Bearer ${session.access_token}`;
+  }
   const res = await fetch(`${API_BASE}${path}`, {
-    headers: { "Content-Type": "application/json" },
     ...options,
+    headers: { ...headers, ...(options?.headers as Record<string, string> | undefined) },
   });
   if (!res.ok) {
     const text = await res.text().catch(() => "");

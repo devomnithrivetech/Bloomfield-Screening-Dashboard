@@ -36,7 +36,7 @@ _TOKEN_URI = "https://oauth2.googleapis.com/token"
 # OAuth helpers — built manually to avoid google_auth_oauthlib's PKCE injection
 # ---------------------------------------------------------------------------
 
-def get_oauth_url() -> str:
+def get_oauth_url(state: str | None = None) -> str:
     """Return the Google OAuth consent screen URL (no PKCE)."""
     s = get_settings()
     params = {
@@ -47,6 +47,8 @@ def get_oauth_url() -> str:
         "access_type": "offline",
         "prompt": "consent",
     }
+    if state:
+        params["state"] = state
     return f"{_AUTH_URI}?{urllib.parse.urlencode(params)}"
 
 
