@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  ArrowLeft, ArrowRight, Check, Clock, Download,
+  ArrowLeft, ArrowRight, Check, Clock,
   Loader2, Mail, RefreshCw, Search, SortAsc, SortDesc, CalendarDays, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { screenedApi, dealsApi, type ScreenedEmail, type ApiPipelineStage } from "@/lib/api";
+import { screenedApi, type ScreenedEmail, type ApiPipelineStage } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -210,24 +210,7 @@ function ScreenedCard({ entry }: { entry: ScreenedEmail }) {
         {/* Action row */}
         {isComplete && entry.deal_id && (
           <div className="flex items-center gap-2 pt-1 border-t border-border">
-            {entry.screener_s3_key && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-1.5 text-xs"
-                onClick={async () => {
-                  try {
-                    const { url } = await dealsApi.getScreenerDownloadUrl(entry.deal_id!);
-                    window.open(url, "_blank");
-                  } catch {
-                    // silently ignore
-                  }
-                }}
-              >
-                <Download className="h-3.5 w-3.5" />
-                Download Screener
-              </Button>
-            )}
+            {/* Download Screener button intentionally hidden — re-enable once screener output is finalised */}
             <Button
               size="sm"
               className="bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5 text-xs ml-auto"

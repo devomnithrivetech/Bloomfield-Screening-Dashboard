@@ -16,6 +16,7 @@ class EmailStatus(str, Enum):
 class AttachmentType(str, Enum):
     EXCEL = "excel"
     PDF = "pdf"
+    WORD = "word"
     OTHER = "other"
 
 

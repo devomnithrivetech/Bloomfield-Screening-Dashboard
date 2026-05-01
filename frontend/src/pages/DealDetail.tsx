@@ -1,9 +1,8 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import {
-  ArrowLeft, Download, AlertTriangle, CheckCircle2, Loader2,
+  ArrowLeft, AlertTriangle, CheckCircle2, Loader2,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { dealsApi, type ApiDealDetail, type ApiKeyMetric } from "@/lib/api";
@@ -390,19 +389,7 @@ const DealDetail = () => {
         )}
 
         {/* ── Section 5: Actions ─────────────────────────────────────────── */}
-        <Card className="overflow-hidden">
-          <SectionHeader>Actions</SectionHeader>
-          <CardContent className="px-6 py-4 flex items-center gap-3">
-            <Button
-              onClick={handleDownload}
-              disabled={!deal.screener_s3_key}
-              className="bg-success hover:bg-success/90 text-success-foreground gap-2 press"
-            >
-              <Download className="h-4 w-4" />
-              Download Screener (XLSX)
-            </Button>
-          </CardContent>
-        </Card>
+        {/* Download button intentionally hidden — re-enable once screener output is finalised */}
 
       </div>
     </div>

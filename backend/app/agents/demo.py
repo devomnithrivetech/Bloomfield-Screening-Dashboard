@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Any
 
 import boto3
+import docx
 import openpyxl
 import pdfplumber
 from app.core.config import get_settings
@@ -1418,13 +1419,15 @@ def _s3_presigned_url(key: str, settings: Any, expires: int = 3600) -> str:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _build_document_text_blocks(attachments: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Extract text from PDFs and Excel files and return as Claude text content blocks."""
+    """Extract text from PDFs, Excel, and Word files and return as Claude text content blocks."""
     blocks: list[dict[str, Any]] = []
     for att in attachments:
         if att["type"] == "pdf":
             text = _extract_pdf_text(att["data"], att["filename"])
         elif att["type"] == "excel":
             text = _extract_excel_text(att["data"], att["filename"])
+        elif att["type"] == "word":
+            text = _extract_word_text(att["data"], att["filename"])
         else:
             continue
         if text.strip():
@@ -1460,6 +1463,28 @@ def _extract_pdf_text(data: bytes, filename: str) -> str:
         return "\n\n".join(pages)
     except Exception as exc:
         log.warning("pdf_extract_failed", filename=filename, error=str(exc))
+        return ""
+
+
+def _extract_word_text(data: bytes, filename: str) -> str:
+    try:
+        document = docx.Document(io.BytesIO(data))
+        parts: list[str] = []
+        for para in document.paragraphs:
+            if para.text.strip():
+                parts.append(para.text)
+        for i, table in enumerate(document.tables):
+            rows: list[str] = []
+            for row in table.rows:
+                cells = [cell.text.strip() for cell in row.cells]
+                line = "\t".join(cells).rstrip()
+                if line.replace("\t", "").strip():
+                    rows.append(line)
+            if rows:
+                parts.append(f"[Table {i + 1}]\n" + "\n".join(rows))
+        return "\n\n".join(parts)
+    except Exception as exc:
+        log.warning("word_extract_failed", filename=filename, error=str(exc))
         return ""
 
 

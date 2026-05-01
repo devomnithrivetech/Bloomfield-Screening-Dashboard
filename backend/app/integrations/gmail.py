@@ -135,6 +135,8 @@ def _attachment_type(mime_type: str, filename: str) -> AttachmentType:
         return AttachmentType.EXCEL
     if "pdf" in mime_type or fn.endswith(".pdf"):
         return AttachmentType.PDF
+    if "word" in mime_type or "msword" in mime_type or fn.endswith((".docx", ".doc")):
+        return AttachmentType.WORD
     return AttachmentType.OTHER
 
 

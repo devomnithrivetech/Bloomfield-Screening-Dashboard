@@ -33,7 +33,7 @@ import { cn } from "@/lib/utils";
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-const ALLOWED_EXTENSIONS = new Set([".pdf", ".xlsx", ".xls", ".csv"]);
+const ALLOWED_EXTENSIONS = new Set([".pdf", ".xlsx", ".xls", ".csv", ".docx", ".doc"]);
 const MAX_EXTRA_FILES = 10;
 const MAX_BYTES = 50 * 1024 * 1024;
 
@@ -126,7 +126,7 @@ const EmailDetail = ({ email, onSendForProcessing }: EmailDetailProps) => {
     const list = Array.from(incoming);
     const invalid = list.filter((f) => !ALLOWED_EXTENSIONS.has(extOf(f.name)));
     if (invalid.length) {
-      setFileError(`Unsupported type: ${invalid.map(f => f.name).join(", ")}. Allowed: PDF, XLSX, XLS, CSV.`);
+      setFileError(`Unsupported type: ${invalid.map(f => f.name).join(", ")}. Allowed: PDF, XLSX, XLS, CSV, DOCX, DOC.`);
       return;
     }
     const oversized = list.filter((f) => f.size > MAX_BYTES);
@@ -391,7 +391,7 @@ const EmailDetail = ({ email, onSendForProcessing }: EmailDetailProps) => {
               <Label className="text-xs font-medium">
                 Additional Documents
                 <span className="ml-1 font-normal text-muted-foreground">
-                  (optional — PDF, XLSX, XLS, CSV, max 50 MB each)
+                  (optional — PDF, XLSX, XLS, CSV, DOCX, DOC, max 50 MB each)
                 </span>
               </Label>
 
@@ -417,7 +417,7 @@ const EmailDetail = ({ email, onSendForProcessing }: EmailDetailProps) => {
                   ref={fileInputRef}
                   type="file"
                   multiple
-                  accept=".pdf,.xlsx,.xls,.csv"
+                  accept=".pdf,.xlsx,.xls,.csv,.docx,.doc"
                   className="sr-only"
                   onChange={(e) => e.target.files && validateAndAdd(e.target.files)}
                 />

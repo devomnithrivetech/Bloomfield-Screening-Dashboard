@@ -402,11 +402,6 @@ const Dashboard = () => {
             valueColor: "text-success",
           },
           {
-            label: "Inbox This Week",
-            value: dashStats ? String(dashStats.inbox_this_week) : "–",
-            subtext: "new deal emails",
-          },
-          {
             label: "In Progress",
             value: dashStats ? String(dashStats.in_progress) : "–",
             subtext: "processing now",

@@ -22,12 +22,14 @@ router = APIRouter()
 # ---------------------------------------------------------------------------
 # Validation constants
 # ---------------------------------------------------------------------------
-_ALLOWED_EXTENSIONS: frozenset[str] = frozenset({".pdf", ".xlsx", ".xls", ".csv"})
+_ALLOWED_EXTENSIONS: frozenset[str] = frozenset({".pdf", ".xlsx", ".xls", ".csv", ".docx", ".doc"})
 _EXT_TO_TYPE: dict[str, str] = {
     ".pdf":  "pdf",
     ".xlsx": "excel",
     ".xls":  "excel",
     ".csv":  "other",
+    ".docx": "word",
+    ".doc":  "word",
 }
 _MAX_FILES    = 10
 _MAX_BYTES    = 50 * 1024 * 1024  # 50 MB per file
@@ -106,7 +108,7 @@ def _validate_file(f: UploadFile) -> None:
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=(
                 f"'{f.filename}' has an unsupported type. "
-                "Allowed extensions: PDF, XLSX, XLS, CSV."
+                "Allowed extensions: PDF, XLSX, XLS, CSV, DOCX, DOC."
             ),
         )
 

@@ -23,8 +23,8 @@ from app.schemas.email import (
 from app.services import deal_service, email_service
 
 # Validation constants for extra attached files
-_ALLOWED_EXTRA_EXTENSIONS: frozenset[str] = frozenset({".pdf", ".xlsx", ".xls", ".csv"})
-_EXTRA_EXT_TO_TYPE: dict[str, str] = {".pdf": "pdf", ".xlsx": "excel", ".xls": "excel", ".csv": "other"}
+_ALLOWED_EXTRA_EXTENSIONS: frozenset[str] = frozenset({".pdf", ".xlsx", ".xls", ".csv", ".docx", ".doc"})
+_EXTRA_EXT_TO_TYPE: dict[str, str] = {".pdf": "pdf", ".xlsx": "excel", ".xls": "excel", ".csv": "other", ".docx": "word", ".doc": "word"}
 _MAX_EXTRA_FILES = 10
 _MAX_EXTRA_BYTES = 50 * 1024 * 1024  # 50 MB per file
 
@@ -243,7 +243,7 @@ async def process_email(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=(
                     f"'{f.filename}' has an unsupported type. "
-                    "Allowed: PDF, XLSX, XLS, CSV."
+                    "Allowed: PDF, XLSX, XLS, CSV, DOCX, DOC."
                 ),
             )
 

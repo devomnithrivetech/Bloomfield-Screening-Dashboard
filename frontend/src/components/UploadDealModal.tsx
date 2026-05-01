@@ -27,7 +27,7 @@ interface FileEntry {
   id: string;
 }
 
-const ALLOWED_EXTENSIONS = new Set([".pdf", ".xlsx", ".xls", ".csv"]);
+const ALLOWED_EXTENSIONS = new Set([".pdf", ".xlsx", ".xls", ".csv", ".docx", ".doc"]);
 const MAX_FILES = 10;
 const MAX_BYTES = 50 * 1024 * 1024;
 
@@ -74,7 +74,7 @@ export default function UploadDealModal({ open, onClose }: UploadDealModalProps)
       const list = Array.from(incoming);
       const invalid = list.filter((f) => !ALLOWED_EXTENSIONS.has(ext(f.name)));
       if (invalid.length) {
-        setError(`Unsupported file type: ${invalid.map((f) => f.name).join(", ")}. Allowed: PDF, XLSX, XLS, CSV.`);
+        setError(`Unsupported file type: ${invalid.map((f) => f.name).join(", ")}. Allowed: PDF, XLSX, XLS, CSV, DOCX, DOC.`);
         return;
       }
       const oversized = list.filter((f) => f.size > MAX_BYTES);
@@ -254,7 +254,7 @@ export default function UploadDealModal({ open, onClose }: UploadDealModalProps)
             <Label className="text-xs font-medium">
               Attachments
               <span className="ml-1 text-muted-foreground font-normal">
-                (PDF, XLSX, XLS, CSV — max 50 MB each, up to {MAX_FILES} files)
+                (PDF, XLSX, XLS, CSV, DOCX, DOC — max 50 MB each, up to {MAX_FILES} files)
               </span>
             </Label>
 
@@ -278,13 +278,13 @@ export default function UploadDealModal({ open, onClose }: UploadDealModalProps)
                 <p className="text-sm font-medium text-foreground/80">
                   Drag & drop files here, or click to browse
                 </p>
-                <p className="text-xs text-muted-foreground">PDF, XLSX, XLS, CSV accepted</p>
+                <p className="text-xs text-muted-foreground">PDF, XLSX, XLS, CSV, DOCX, DOC accepted</p>
               </div>
               <input
                 ref={fileInput}
                 type="file"
                 multiple
-                accept=".pdf,.xlsx,.xls,.csv"
+                accept=".pdf,.xlsx,.xls,.csv,.docx,.doc"
                 className="sr-only"
                 onChange={(e) => e.target.files && validateAndAdd(e.target.files)}
                 disabled={submitting}
