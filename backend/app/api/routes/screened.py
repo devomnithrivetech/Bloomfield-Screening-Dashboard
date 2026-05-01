@@ -19,7 +19,7 @@ async def list_screened_emails(user: dict = Depends(get_current_user)) -> list[d
             .select("*")
             .eq("user_id", user["id"])
             .order("created_at", desc=True)
-            .limit(200)
+            .limit(500)
             .execute()
         )
         return resp.data or []

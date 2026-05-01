@@ -1,12 +1,13 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft, ArrowRight, Check, Clock, Download,
-  Loader2, Mail, RefreshCw,
+  Loader2, Mail, RefreshCw, Search, SortAsc, SortDesc, CalendarDays, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { screenedApi, type ScreenedEmail, type ApiPipelineStage } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
@@ -31,7 +32,6 @@ const STAGE_ORDER = [
   "complete",
 ];
 
-// Processing status → human-readable label
 const STATUS_LABEL: Record<string, string> = {
   queued:                "Queued",
   email_received:        "Email Received",
@@ -53,6 +53,13 @@ const STATUS_BADGE: Record<string, string> = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+//  TYPES
+// ─────────────────────────────────────────────────────────────────────────────
+
+type DatePreset = "all" | "today" | "this_week" | "specific" | "range";
+type SortOrder  = "newest" | "oldest";
+
+// ─────────────────────────────────────────────────────────────────────────────
 //  HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -60,37 +67,41 @@ function buildPipeline(entry: ScreenedEmail): ApiPipelineStage[] {
   if (entry.pipeline && entry.pipeline.length > 0) {
     return entry.pipeline as ApiPipelineStage[];
   }
-  // Derive a sensible pipeline from processing_status when no explicit stages exist
   const completedUpTo = STAGE_ORDER.indexOf(entry.processing_status);
   return STAGE_ORDER.map((stage, i) => ({
     stage,
     status:
-      i < completedUpTo ? "completed"
+      i < completedUpTo  ? "completed"
       : i === completedUpTo ? "in_progress"
       : "pending",
-    started_at: null,
+    started_at:  null,
     finished_at: null,
-    detail: null,
+    detail:      null,
   }));
 }
 
 function formatDate(iso: string | null): string {
   if (!iso) return "—";
-  const d = new Date(iso);
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return new Date(iso).toLocaleDateString("en-US", {
+    month: "short", day: "numeric", year: "numeric",
+  });
 }
 
 function formatDateTime(iso: string | null): string {
   if (!iso) return "—";
-  const d = new Date(iso);
-  return d.toLocaleString("en-US", {
+  return new Date(iso).toLocaleString("en-US", {
     month: "short", day: "numeric", year: "numeric",
     hour: "numeric", minute: "2-digit",
   });
 }
 
+/** Returns the most relevant date for filtering/sorting. */
+function entryDate(e: ScreenedEmail): Date {
+  return new Date(e.received_at ?? e.sent_for_screening_at ?? e.created_at);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
-//  PIPELINE TRACK (reused from DealDetail)
+//  PIPELINE TRACK
 // ─────────────────────────────────────────────────────────────────────────────
 
 function PipelineTrack({ pipeline }: { pipeline: ApiPipelineStage[] }) {
@@ -140,8 +151,8 @@ function PipelineTrack({ pipeline }: { pipeline: ApiPipelineStage[] }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function ScreenedCard({ entry }: { entry: ScreenedEmail }) {
-  const navigate = useNavigate();
-  const pipeline = buildPipeline(entry);
+  const navigate  = useNavigate();
+  const pipeline  = buildPipeline(entry);
   const isComplete = entry.processing_status === "complete";
   const isFailed   = entry.processing_status === "failed";
   const isActive   = !isComplete && !isFailed;
@@ -191,7 +202,7 @@ function ScreenedCard({ entry }: { entry: ScreenedEmail }) {
         {/* Pipeline progress track */}
         <PipelineTrack pipeline={pipeline} />
 
-        {/* Action row — only shown when complete */}
+        {/* Action row */}
         {isComplete && entry.deal_id && (
           <div className="flex items-center gap-2 pt-1 border-t border-border">
             {entry.screener_s3_key && (
@@ -229,15 +240,47 @@ function ScreenedCard({ entry }: { entry: ScreenedEmail }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+//  DATE PRESET BUTTON
+// ─────────────────────────────────────────────────────────────────────────────
+
+function PresetBtn({
+  label, active, onClick,
+}: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "px-2.5 py-1 text-xs font-medium rounded-md transition-colors border whitespace-nowrap",
+        active
+          ? "bg-primary text-primary-foreground border-primary"
+          : "bg-background text-muted-foreground border-border hover:text-foreground hover:border-foreground/30",
+      )}
+    >
+      {label}
+    </button>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 //  PAGE
 // ─────────────────────────────────────────────────────────────────────────────
 
 const ScreenedEmails = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [entries, setEntries] = useState<ScreenedEmail[]>([]);
-  const [loading, setLoading] = useState(true);
 
+  const [entries,  setEntries]  = useState<ScreenedEmail[]>([]);
+  const [loading,  setLoading]  = useState(true);
+
+  // ── filter & sort state ──────────────────────────────────────────────────
+  const [searchQuery,   setSearchQuery]   = useState("");
+  const [datePreset,    setDatePreset]    = useState<DatePreset>("all");
+  const [specificDate,  setSpecificDate]  = useState("");
+  const [dateFrom,      setDateFrom]      = useState("");
+  const [dateTo,        setDateTo]        = useState("");
+  const [sortOrder,     setSortOrder]     = useState<SortOrder>("newest");
+
+  // ── data fetching ────────────────────────────────────────────────────────
   const fetchEntries = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
@@ -252,9 +295,7 @@ const ScreenedEmails = () => {
     }
   }, [toast]);
 
-  useEffect(() => {
-    fetchEntries();
-  }, [fetchEntries]);
+  useEffect(() => { fetchEntries(); }, [fetchEntries]);
 
   // Poll every 5 s while any entry is actively processing
   const hasActive = entries.some(
@@ -266,6 +307,74 @@ const ScreenedEmails = () => {
     return () => clearInterval(timer);
   }, [hasActive, fetchEntries]);
 
+  // ── filter + sort (pure, memoised) ──────────────────────────────────────
+  const filteredAndSorted = useMemo(() => {
+    let result = [...entries];
+
+    // Keyword search — subject, screened_title, sender
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      result = result.filter((e) => {
+        const title   = (e.screened_title ?? "").toLowerCase();
+        const subject = (e.subject        ?? "").toLowerCase();
+        const sender  = (e.sender         ?? "").toLowerCase();
+        return title.includes(q) || subject.includes(q) || sender.includes(q);
+      });
+    }
+
+    // Date filter
+    if (datePreset === "today") {
+      const start = new Date();
+      start.setHours(0, 0, 0, 0);
+      result = result.filter((e) => entryDate(e) >= start);
+    } else if (datePreset === "this_week") {
+      const start = new Date();
+      // Normalise to Monday of the current week
+      const day  = start.getDay();
+      const diff = day === 0 ? -6 : 1 - day;
+      start.setDate(start.getDate() + diff);
+      start.setHours(0, 0, 0, 0);
+      result = result.filter((e) => entryDate(e) >= start);
+    } else if (datePreset === "specific" && specificDate) {
+      const start = new Date(specificDate + "T00:00:00");
+      const end   = new Date(specificDate + "T23:59:59");
+      result = result.filter((e) => {
+        const d = entryDate(e);
+        return d >= start && d <= end;
+      });
+    } else if (datePreset === "range") {
+      if (dateFrom) {
+        const start = new Date(dateFrom + "T00:00:00");
+        result = result.filter((e) => entryDate(e) >= start);
+      }
+      if (dateTo) {
+        const end = new Date(dateTo + "T23:59:59");
+        result = result.filter((e) => entryDate(e) <= end);
+      }
+    }
+
+    // Sort
+    result.sort((a, b) => {
+      const diff = entryDate(a).getTime() - entryDate(b).getTime();
+      return sortOrder === "newest" ? -diff : diff;
+    });
+
+    return result;
+  }, [entries, searchQuery, datePreset, specificDate, dateFrom, dateTo, sortOrder]);
+
+  const isFiltered =
+    searchQuery.trim() !== "" ||
+    datePreset !== "all";
+
+  function clearFilters() {
+    setSearchQuery("");
+    setDatePreset("all");
+    setSpecificDate("");
+    setDateFrom("");
+    setDateTo("");
+  }
+
+  // ── render ───────────────────────────────────────────────────────────────
   return (
     <div className="min-h-[calc(100vh-3.5rem)] bg-background">
       <div className="max-w-[900px] mx-auto px-6 py-8 space-y-6">
@@ -283,7 +392,9 @@ const ScreenedEmails = () => {
             <span className="text-muted-foreground/40">/</span>
             <h1 className="text-xl font-semibold text-foreground">Screening Queue</h1>
             {entries.length > 0 && (
-              <Badge variant="secondary" className="text-[11px] px-2">{entries.length}</Badge>
+              <Badge variant="secondary" className="text-[11px] px-2">
+                {entries.length}
+              </Badge>
             )}
           </div>
           <div className="flex items-center gap-2">
@@ -305,6 +416,121 @@ const ScreenedEmails = () => {
           </div>
         </div>
 
+        {/* Filter bar */}
+        {!loading && entries.length > 0 && (
+          <div className="bg-card border border-border rounded-lg p-3 space-y-3">
+            {/* Row 1: search + sort */}
+            <div className="flex gap-2 items-center">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <Input
+                  placeholder="Search by subject or property name…"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 pr-8 text-sm bg-background"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    aria-label="Clear search"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Sort toggle */}
+              <div className="flex border border-border rounded-md overflow-hidden flex-shrink-0">
+                <button
+                  onClick={() => setSortOrder("newest")}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors",
+                    sortOrder === "newest"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted",
+                  )}
+                >
+                  <SortDesc className="h-3.5 w-3.5" />
+                  Newest
+                </button>
+                <div className="w-px bg-border" />
+                <button
+                  onClick={() => setSortOrder("oldest")}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors",
+                    sortOrder === "oldest"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted",
+                  )}
+                >
+                  <SortAsc className="h-3.5 w-3.5" />
+                  Oldest
+                </button>
+              </div>
+            </div>
+
+            {/* Row 2: date presets + conditional date inputs */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <CalendarDays className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+              <PresetBtn label="All"           active={datePreset === "all"}      onClick={() => setDatePreset("all")} />
+              <PresetBtn label="Today"         active={datePreset === "today"}    onClick={() => setDatePreset("today")} />
+              <PresetBtn label="This Week"     active={datePreset === "this_week"} onClick={() => setDatePreset("this_week")} />
+              <PresetBtn label="Specific Date" active={datePreset === "specific"} onClick={() => setDatePreset("specific")} />
+              <PresetBtn label="Date Range"    active={datePreset === "range"}    onClick={() => setDatePreset("range")} />
+
+              {datePreset === "specific" && (
+                <input
+                  type="date"
+                  value={specificDate}
+                  onChange={(e) => setSpecificDate(e.target.value)}
+                  className="px-2 py-1 text-xs rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              )}
+
+              {datePreset === "range" && (
+                <>
+                  <span className="text-xs text-muted-foreground">From</span>
+                  <input
+                    type="date"
+                    value={dateFrom}
+                    max={dateTo || undefined}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                    className="px-2 py-1 text-xs rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                  <span className="text-xs text-muted-foreground">to</span>
+                  <input
+                    type="date"
+                    value={dateTo}
+                    min={dateFrom || undefined}
+                    onChange={(e) => setDateTo(e.target.value)}
+                    className="px-2 py-1 text-xs rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Results summary */}
+        {!loading && isFiltered && entries.length > 0 && (
+          <div className="flex items-center justify-between -mt-2">
+            <span className="text-xs text-muted-foreground">
+              Showing{" "}
+              <span className="font-medium text-foreground">{filteredAndSorted.length}</span>{" "}
+              of{" "}
+              <span className="font-medium text-foreground">{entries.length}</span> results
+            </span>
+            <button
+              onClick={clearFilters}
+              className="flex items-center gap-1 text-xs text-primary hover:underline"
+            >
+              <X className="h-3 w-3" />
+              Clear filters
+            </button>
+          </div>
+        )}
+
         {/* Content */}
         {loading ? (
           <div className="flex items-center justify-center py-24 text-muted-foreground gap-2">
@@ -319,9 +545,18 @@ const ScreenedEmails = () => {
               Go to Inbox
             </Button>
           </div>
+        ) : filteredAndSorted.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-24 text-muted-foreground gap-3">
+            <Search className="h-10 w-10 opacity-30" />
+            <p className="text-sm font-medium text-foreground/70">No results match your filters</p>
+            <p className="text-xs">Try adjusting the date range or search term.</p>
+            <Button variant="outline" size="sm" onClick={clearFilters}>
+              Clear filters
+            </Button>
+          </div>
         ) : (
           <div className="space-y-4">
-            {entries.map((entry) => (
+            {filteredAndSorted.map((entry) => (
               <ScreenedCard key={entry.id} entry={entry} />
             ))}
           </div>
