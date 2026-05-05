@@ -116,7 +116,6 @@ class DealDetail(DealSummary):
     risks:                 list[RiskFlag]       = []
     pipeline:              list[PipelineStageState] = []
     screener_s3_key:       str | None = None
-    screening_email_draft: str | None = None
     # Full property info dict for frontend display
     property_info:         dict[str, Any] = {}
     # New structured financial fields

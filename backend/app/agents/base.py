@@ -26,7 +26,6 @@ class AgentContext:
     market: dict[str, Any] = field(default_factory=dict)
     analysis: dict[str, Any] = field(default_factory=dict)
     screener_path: str | None = None
-    email_draft: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
 

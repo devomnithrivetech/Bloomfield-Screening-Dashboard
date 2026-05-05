@@ -165,7 +165,9 @@ DEAL SUMMARY NARRATIVE GUIDELINES
 
 Write three narrative sections for the Deal Summary. Use coherent prose paragraphs only — \
 no bullet points or dashes. Each paragraph should be 4–6 sentences covering a single theme. \
-Separate paragraphs with a blank line. Be concise: cite only figures present in the documents.
+Separate paragraphs with a blank line. If you must use any numbered or lettered enumeration, \
+place a blank line after each numbered item so each item renders as a distinct block. \
+Be concise: cite only figures present in the documents.
 
 PROPERTY OVERVIEW (2 paragraphs):
 Paragraph 1 — Identity: property name, location (city, state, county, MSA), asset type, unit \
@@ -1033,7 +1035,6 @@ def _persist_manual_upload_to_supabase(
         "confidence":            screening.get("confidence"),
         "risk_rating":           screening.get("risk_rating"),
         "screener_storage_path": screener_s3_key,
-        "email_draft":           _build_email_draft(result),
         "metrics":               screening.get("key_metrics", []),
         "key_metrics":           screening.get("key_metrics", []),
         "highlights": [
@@ -1427,7 +1428,6 @@ def _persist_to_supabase(
         "confidence":           screening.get("confidence"),
         "risk_rating":          screening.get("risk_rating"),
         "screener_storage_path":screener_s3_key,
-        "email_draft":          _build_email_draft(result),
         "metrics":              screening.get("key_metrics", []),
         "key_metrics":          screening.get("key_metrics", []),
         "highlights": [
@@ -1471,33 +1471,6 @@ def _persist_to_supabase(
         screened_title=prop.get("property_name"),
         screener_s3_key=screener_s3_key,
         pipeline_stages=pipeline_stages,
-    )
-
-
-def _build_email_draft(result: dict[str, Any]) -> str:
-    prop = result.get("property_info") or {}
-    summary = result.get("deal_summary") or {}
-    screening = result.get("screening_result") or {}
-    loan = result.get("loan_terms") or {}
-
-    rec = (screening.get("recommendation") or "negotiate").upper()
-    rec_map = {"PROCEED": "Proceed to Diligence", "NEGOTIATE": "Negotiate", "PASS": "Pass"}
-    rec_label = rec_map.get(rec, rec)
-
-    metrics_lines = "\n".join(
-        f"  {m['label']}: {m['value']}"
-        for m in (screening.get("key_metrics") or [])
-    )
-
-    return (
-        f"Team,\n\n"
-        f"Please find below the screening summary for {prop.get('property_name', '[Property]')}, "
-        f"a {prop.get('property_type', 'senior housing')} community in {prop.get('city_state', '[Location]')}.\n\n"
-        f"KEY METRICS:\n{metrics_lines}\n\n"
-        f"HIGHLIGHTS:\n{summary.get('investment_highlights', '')}\n\n"
-        f"RISKS & FLAGS:\n{summary.get('investment_risks', '')}\n\n"
-        f"Recommendation: {rec_label}\n\n"
-        f"— Bloomfield Capital Originations"
     )
 
 

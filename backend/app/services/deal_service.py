@@ -244,7 +244,6 @@ def _row_to_deal_detail(row: dict) -> DealDetail:
         risks=risk_objs,
         pipeline=pipeline_objs,
         screener_s3_key=row.get("screener_storage_path"),
-        screening_email_draft=row.get("email_draft"),
         property_info=prop,
         financial_summary=row.get("financial_summary"),
         sources_and_uses=row.get("sources_and_uses"),

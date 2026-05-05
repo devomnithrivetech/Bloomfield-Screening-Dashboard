@@ -171,7 +171,6 @@ export interface ApiDealDetail {
   risks: { title: string; detail: string; severity: string }[];
   pipeline: ApiPipelineStage[];
   screener_s3_key: string | null;
-  screening_email_draft: string | null;
   property_info: Record<string, unknown>;
   financial_summary?: { label: string; value: string; dy?: string }[];
   sources_and_uses?: {

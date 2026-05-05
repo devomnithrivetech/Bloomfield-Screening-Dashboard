@@ -20,7 +20,6 @@ class DealRecord:
     confidence: float | None = None
     risk_rating: str | None = None
     screener_storage_path: str | None = None
-    email_draft: str | None = None
     metrics: dict = field(default_factory=dict)
     highlights: list[dict] = field(default_factory=list)
     risks: list[dict] = field(default_factory=list)
