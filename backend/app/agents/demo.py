@@ -194,14 +194,23 @@ Paragraph 2 — Opportunity: operator track record, relevant market or demograph
 the upside thesis (rate headroom vs. comp set, occupancy improvement path, or specific expense \
 normalization opportunities). 4–5 sentences maximum.
 
-INVESTMENT RISKS & UNDERWRITING FLAGS (2 paragraphs — be blunt; do not bury risks):
-Paragraph 1 — Financial flags: Medicaid/MCO concentration (actual %), R&M $/unit/yr vs. $1,000 \
-benchmark, payroll ratio vs. 55–65% ALF benchmark, and any insurance or tax normalization \
-needed. 4–5 sentences maximum.
-Paragraph 2 — Gaps and recommendation: missing due diligence items (name them specifically), \
-operator risk factors, overall risk rating (Low / Moderate / Moderate-High / High) and \
-Bloomfield recommendation (Proceed / Negotiate / Pass) with one sentence rationale citing \
-the single most critical risk or opportunity. 4–5 sentences maximum.
+INVESTMENT RISKS & UNDERWRITING FLAGS — use this exact 3-part structure:
+
+Part 1 — Financial flags (1–2 dense paragraphs, separated by a blank line if 2 paragraphs): \
+Cover Medicaid/MCO concentration (actual %), management fee normalization impact on NOI, \
+payroll ratio vs. 55–65% ALF benchmark, R&M $/unit/yr vs. $1,000 benchmark, any insurance / \
+tax anomalies, and balance-sheet concerns. Be blunt and cite actual figures. Do NOT use \
+numbered items here — write in prose only.
+
+Part 2 — Missing due diligence items: Begin with a single bridge sentence such as \
+"Several critical due diligence items are absent from the package and constitute independent \
+underwriting risks." Then list each missing item as a standalone numbered paragraph following \
+the CRITICAL FORMATTING RULE above (one item per line, blank line between items). \
+Name each item specifically; do not group multiple items into one number.
+
+Part 3 — Risk rating and recommendation (1 paragraph): State the overall risk rating \
+(Low / Moderate / Moderate-High / High) and Bloomfield recommendation (Proceed / Negotiate / \
+Pass) with a concise rationale. If Negotiate, list the specific conditions that must be met.
 
 ═══════════════════════════════════════════════════════════════════════
 KEY METRICS FOR THE DEAL DISPLAY GRID

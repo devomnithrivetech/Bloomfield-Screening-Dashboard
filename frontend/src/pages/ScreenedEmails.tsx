@@ -406,9 +406,9 @@ const ScreenedEmails = () => {
       }
     }
 
-    // Sort — based on original email received date
+    // Sort — based on when the email was sent for screening
     result.sort((a, b) => {
-      const diff = emailDate(a).getTime() - emailDate(b).getTime();
+      const diff = screeningDate(a).getTime() - screeningDate(b).getTime();
       return sortOrder === "newest" ? -diff : diff;
     });
 
