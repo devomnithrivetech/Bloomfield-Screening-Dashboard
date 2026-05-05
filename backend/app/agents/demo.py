@@ -163,44 +163,33 @@ When data is available, compute these before filling the output:
 DEAL SUMMARY NARRATIVE GUIDELINES
 ═══════════════════════════════════════════════════════════════════════
 
-Write three narrative sections for the Deal Summary section of the Bloomfield Origination Screener.
+Write three narrative sections for the Deal Summary. Use coherent prose paragraphs only — \
+no bullet points or dashes. Each paragraph should be 4–6 sentences covering a single theme. \
+Separate paragraphs with a blank line. Be concise: cite only figures present in the documents.
 
-PROPERTY OVERVIEW (1–2 paragraphs):
-- Property name, location (city, state, county, MSA if identifiable), asset type, unit count and mix.
-- Licensing framework (AL/MC/IL licensing status; CMS certification if SNF).
-- Current occupancy and census vs. licensed capacity.
-- T-12 revenue and reported NOI (actual numbers from documents).
-- Normalized NOI (after management fee adjustment, deferred capex reserve addition, one-time item \
-removal) and implied value range at market cap rates (e.g., "Normalized NOI of $X implies a value \
-of $Y–$Z at 8–9% cap rates").
-- Deal type context (acquisition, refi, bridge, construction) and loan request amount.
+PROPERTY OVERVIEW (2 paragraphs):
+Paragraph 1 — Identity: property name, location (city, state, county, MSA), asset type, unit \
+count and mix, licensing status (AL/MC/IL or CMS certification for SNF), and current occupancy \
+vs. licensed capacity.
+Paragraph 2 — Financials: T-12 revenue and reported NOI, normalized NOI (after management fee \
+adjustment, deferred capex reserve, one-time item removal) and implied value at market cap rates, \
+deal type (acquisition/refi/bridge/construction), and loan request amount.
 
-INVESTMENT HIGHLIGHTS (1 paragraph — lead with what is genuinely strong):
-- Census stability and ADC trend: monthly range and full-year average (must reference actual \
-numbers from the documents).
-- Revenue trajectory YoY (state actual % change from the financials).
-- Rent roll annualized vs. T-12 run-rate if calculable.
-- Payor diversification or private-pay concentration (whichever is favorable — state actual %).
-- Market / demographic tailwinds: 75+ population growth, income profile, home values (reference \
-actual data if provided).
-- Operator track record: years in business, portfolio size, comparable assets (if available).
-- Upside thesis: rate growth headroom vs. comp set, occupancy improvement path, specific expense \
-normalization opportunities identified in the financials.
+INVESTMENT HIGHLIGHTS (2 paragraphs — lead with the strongest data points; be concise):
+Paragraph 1 — Performance: ADC trend with actual monthly range, revenue trajectory YoY (actual \
+%), and payor mix private-pay concentration (actual %). 4–5 sentences maximum.
+Paragraph 2 — Opportunity: operator track record, relevant market or demographic tailwinds, and \
+the upside thesis (rate headroom vs. comp set, occupancy improvement path, or specific expense \
+normalization opportunities). 4–5 sentences maximum.
 
-INVESTMENT RISKS & UNDERWRITING FLAGS (1–2 paragraphs — be blunt; do not bury risks):
-- Medicaid / MCO concentration and rate ceiling risk (state actual %; flag if >70%).
-- Payor mix trend YoY: private-pay conversion or deterioration (quantify if possible).
-- R&M / deferred capex exposure: state actual $/unit/yr from T-12; CRITICAL if <$500, FLAG if \
-<$1,000.
-- Payroll ratio vs. 55–65% ALF benchmark: state actual ratio from T-12.
-- Insurance anomalies, real estate tax normalization issues (large credits, year-end true-ups).
-- Missing due diligence: surveys, PCR/PCA, staffing/PPD data, licensed capacity documentation, \
-purchase price — be specific about what is absent.
-- Operator track record risks: new operator (<2 years), single reference asset, thin management depth.
-- Overall risk rating: Low / Moderate / Moderate-High / High, with one sentence explaining the \
-primary driver.
-- Bloomfield recommendation: Proceed / Negotiate / Pass + one sentence rationale that references \
-the single most critical risk or opportunity.
+INVESTMENT RISKS & UNDERWRITING FLAGS (2 paragraphs — be blunt; do not bury risks):
+Paragraph 1 — Financial flags: Medicaid/MCO concentration (actual %), R&M $/unit/yr vs. $1,000 \
+benchmark, payroll ratio vs. 55–65% ALF benchmark, and any insurance or tax normalization \
+needed. 4–5 sentences maximum.
+Paragraph 2 — Gaps and recommendation: missing due diligence items (name them specifically), \
+operator risk factors, overall risk rating (Low / Moderate / Moderate-High / High) and \
+Bloomfield recommendation (Proceed / Negotiate / Pass) with one sentence rationale citing \
+the single most critical risk or opportunity. 4–5 sentences maximum.
 
 ═══════════════════════════════════════════════════════════════════════
 KEY METRICS FOR THE DEAL DISPLAY GRID
@@ -249,15 +238,14 @@ per_unit (dollar/unit string), pct (percentage of total, e.g. "72.4%"). \
 If no data is available for this section, omit the field entirely.
 
 SPONSOR OVERVIEW (sponsor_overview in deal_summary):
-Write 1–2 sentences on the proposed borrower/sponsor entity. Include entity name, \
-operator experience, years in business, portfolio size, and geographic focus if available. \
-If sponsor information is absent from the documents, write a single sentence noting \
-what information was not provided.
+Write 2–3 sentences on the proposed borrower/sponsor entity covering entity name, operator \
+experience, years in business, portfolio size, and geographic focus. If sponsor information \
+is absent, state that clearly in one sentence. Write as a single prose paragraph.
 
 LOCATION SUMMARY (location_summary in deal_summary):
-Write 1–2 sentences on the property's market and location context. Reference the MSA, \
-75+ population size or growth trajectory, household income levels, home values, and \
-proximity to healthcare infrastructure where data is available. Note any data gaps.
+Write 2–3 sentences on the property's market and location context. Reference the MSA, 75+ \
+population size or growth trajectory, household income levels, home values, and proximity to \
+healthcare infrastructure where data is available; note any gaps. Write as a single prose paragraph.
 
 CALL submit_screening_result once with all extracted and computed data. Output nothing outside the \
 tool call."""

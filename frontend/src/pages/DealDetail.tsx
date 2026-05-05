@@ -1,7 +1,7 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import {
-  ArrowLeft, AlertTriangle, CheckCircle2, Loader2,
+  ArrowLeft, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Loader2,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -38,14 +38,50 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
   );
 }
 
-// Reusable column sub-header inside a split panel
-function PanelLabel({ accent, children }: { accent: string; children: React.ReactNode }) {
+// Renders LLM narrative text as readable paragraphs split on blank lines
+function NarrativeText({ text }: { text: string }) {
+  const paragraphs = text.split(/\n\n+/).map((p) => p.trim()).filter(Boolean);
+  if (paragraphs.length === 0) return null;
   return (
-    <div className="flex items-center gap-2.5 mb-4">
-      <div className={`w-0.5 h-[18px] rounded-full flex-shrink-0 ${accent}`} />
-      <span className="text-xs font-semibold tracking-wider uppercase text-foreground">
-        {children}
-      </span>
+    <div className="space-y-3">
+      {paragraphs.map((para, i) => (
+        <p key={i} className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+          {para}
+        </p>
+      ))}
+    </div>
+  );
+}
+
+// Collapsible row used inside Analysis and Sponsor & Market cards
+function AccordionRow({
+  label, accent, content, defaultOpen = true,
+}: {
+  label: string; accent: string; content: string; defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="border-b border-border last:border-b-0">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-6 py-4 hover:bg-muted/30 transition-colors text-left"
+      >
+        <div className="flex items-center gap-2.5">
+          <div className={`w-0.5 h-[18px] rounded-full flex-shrink-0 ${accent}`} />
+          <span className="text-xs font-semibold tracking-wider uppercase text-foreground">
+            {label}
+          </span>
+        </div>
+        {open
+          ? <ChevronUp   className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+          : <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+        }
+      </button>
+      {open && (
+        <div className="px-6 pt-1 pb-5">
+          <NarrativeText text={content} />
+        </div>
+      )}
     </div>
   );
 }
@@ -334,26 +370,20 @@ const DealDetail = () => {
         {(highlights || risks) && (
           <Card className="overflow-hidden">
             <SectionHeader>Analysis</SectionHeader>
-            <div className={highlights && risks ? "grid grid-cols-2 divide-x divide-border" : ""}>
-              {highlights && (
-                <div className="p-6">
-                  <PanelLabel accent="bg-primary">Investment Highlights</PanelLabel>
-                  <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-                    {highlights}
-                  </p>
-                </div>
-              )}
-              {risks && (
-                <div className="p-6">
-                  <PanelLabel accent="bg-destructive">
-                    Investment Risks &amp; Underwriting Flags
-                  </PanelLabel>
-                  <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-                    {risks}
-                  </p>
-                </div>
-              )}
-            </div>
+            {highlights && (
+              <AccordionRow
+                label="Investment Highlights"
+                accent="bg-primary"
+                content={highlights}
+              />
+            )}
+            {risks && (
+              <AccordionRow
+                label="Investment Risks &amp; Underwriting Flags"
+                accent="bg-destructive"
+                content={risks}
+              />
+            )}
           </Card>
         )}
 
@@ -361,30 +391,20 @@ const DealDetail = () => {
         {(deal.sponsor_overview || deal.location_summary) && (
           <Card className="overflow-hidden">
             <SectionHeader>Sponsor &amp; Market</SectionHeader>
-            <div
-              className={
-                deal.sponsor_overview && deal.location_summary
-                  ? "grid grid-cols-2 divide-x divide-border"
-                  : ""
-              }
-            >
-              {deal.sponsor_overview && (
-                <div className="p-6">
-                  <PanelLabel accent="bg-primary">Sponsor Overview</PanelLabel>
-                  <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-                    {deal.sponsor_overview}
-                  </p>
-                </div>
-              )}
-              {deal.location_summary && (
-                <div className="p-6">
-                  <PanelLabel accent="bg-muted-foreground/40">Location Summary</PanelLabel>
-                  <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-                    {deal.location_summary}
-                  </p>
-                </div>
-              )}
-            </div>
+            {deal.sponsor_overview && (
+              <AccordionRow
+                label="Sponsor Overview"
+                accent="bg-primary"
+                content={deal.sponsor_overview}
+              />
+            )}
+            {deal.location_summary && (
+              <AccordionRow
+                label="Location Summary"
+                accent="bg-muted-foreground/40"
+                content={deal.location_summary}
+              />
+            )}
           </Card>
         )}
 
