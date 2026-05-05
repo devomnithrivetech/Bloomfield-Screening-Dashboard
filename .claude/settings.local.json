@@ -6,7 +6,10 @@
       "Bash(pip install *)",
       "Bash(python -c \"import docx; print\\('python-docx', docx.__version__\\)\")",
       "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
-      "Bash(xargs ls *)"
+      "Bash(xargs ls *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\aryan\\\\Documents\\\\GitHub\\\\bloomfield-deal-screener-main\" -Recurse -Directory -ErrorAction SilentlyContinue)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "PowerShell(head -40)"
     ]
   }
 }

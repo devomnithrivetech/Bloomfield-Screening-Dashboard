@@ -637,16 +637,18 @@ async def run_manual_upload_screening(
             log.warning("manual_upload_s3_skipped", error=str(exc))
             s3_attachment_keys = []
 
-        # Record S3 keys on the emails row so the row is queryable later
-        try:
-            supabase.table("emails").update({
-                "attachments": [
-                    {"filename": k["filename"], "s3_key": k["s3_key"], "type": k["type"]}
-                    for k in s3_attachment_keys
-                ]
-            }).eq("id", email_id).execute()
-        except Exception as exc:
-            log.warning("manual_upload_attachments_update_failed", error=str(exc))
+        # Record S3 keys on the emails row — only when upload succeeded so we never
+        # wipe the stored list on S3 failure (which would break future reprocessing).
+        if s3_attachment_keys:
+            try:
+                supabase.table("emails").update({
+                    "attachments": [
+                        {"filename": k["filename"], "s3_key": k["s3_key"], "type": k["type"]}
+                        for k in s3_attachment_keys
+                    ]
+                }).eq("id", email_id).execute()
+            except Exception as exc:
+                log.warning("manual_upload_attachments_update_failed", error=str(exc))
 
         # Extract text from PDFs / Excel files
         doc_text_blocks = _build_document_text_blocks(raw_attachments)
@@ -1061,6 +1063,13 @@ def _persist_manual_upload_to_supabase(
         "created_at":    now,
         "updated_at":    now,
     }
+    # Delete any previous deal rows for this email so reprocessing never leaves
+    # orphaned duplicates visible on the dashboard.
+    try:
+        supabase.table("deals").delete().eq("user_id", user_id).eq("email_id", email_id).execute()
+    except Exception as exc:
+        log.warning("old_deal_cleanup_failed", email_id=email_id, error=str(exc))
+
     try:
         supabase.table("deals").insert(deal_row).execute()
     except Exception as exc:
@@ -1398,6 +1407,14 @@ def _persist_to_supabase(
             for k in s3_attachment_keys
         ]
     internal_email_id = _safe_email_write(supabase, user_id, gmail_message_id, email_row)
+
+    # Delete any previous deal rows for this email so reprocessing never leaves
+    # orphaned duplicates visible on the dashboard.
+    if internal_email_id:
+        try:
+            supabase.table("deals").delete().eq("user_id", user_id).eq("email_id", internal_email_id).execute()
+        except Exception as exc:
+            log.warning("old_deal_cleanup_failed", email_id=internal_email_id, error=str(exc))
 
     # Insert deal row
     deal_row: dict[str, Any] = {
