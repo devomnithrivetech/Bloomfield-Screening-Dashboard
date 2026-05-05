@@ -165,8 +165,18 @@ DEAL SUMMARY NARRATIVE GUIDELINES
 
 Write three narrative sections for the Deal Summary. Use coherent prose paragraphs only — \
 no bullet points or dashes. Each paragraph should be 4–6 sentences covering a single theme. \
-Separate paragraphs with a blank line. If you must use any numbered or lettered enumeration, \
-place a blank line after each numbered item so each item renders as a distinct block. \
+Separate paragraphs with a blank line.
+
+CRITICAL FORMATTING RULE: Never list multiple items inline as "(1) item; (2) item; (3) item" \
+within a single sentence or paragraph. If you need to enumerate items (e.g. missing due \
+diligence, risk factors, conditions), write each as its own standalone sentence on its own \
+line, preceded by a blank line. Example of correct format:
+1. First item stated as a complete standalone sentence.
+
+2. Second item stated as a complete standalone sentence.
+
+3. Third item stated as a complete standalone sentence.
+
 Be concise: cite only figures present in the documents.
 
 PROPERTY OVERVIEW (2 paragraphs):
